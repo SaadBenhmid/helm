@@ -1,0 +1,14 @@
+{
+  "helmVersion": "0.1.0",
+  "project": "untitled",
+  "slots": {
+    "framework": null,
+    "models": { "plan": "claude-opus", "build": "kimi-k2.6", "review": "claude-opus" },
+    "mockupTool": null,
+    "indexer": "serena"
+  },
+  "contextCapTarget": 40,
+  "contextCapHard": 50,
+  "comms": "non-technical",
+  "strictness": "soft"
+}
