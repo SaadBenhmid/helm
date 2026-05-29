@@ -20,3 +20,8 @@ Goal: a real, deployable production SaaS — not a demo.
 ## Rules
 - The 3 killer gates are loud by default; the user may override with explicit confirmation
   (their responsibility), but never silently.
+
+## Context & memory (always)
+- This phase's memory = `.helm/SHIP.md` + `state.json` + `DECISIONS.md`. Keep them current — they survive a `/clear`.
+- Keep working context **≤ 40% (hard 50%)**; if approaching, write `.helm/handoff.md` then `/compact` or `/clear` and re-bootstrap.
+- Before `helm advance` (or ending the session), write `.helm/handoff.md`.

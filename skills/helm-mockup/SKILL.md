@@ -22,3 +22,9 @@ consistent, reusable design system.
 ## Rules
 - Do not proceed until BOTH confirmations are given.
 - The template is reused everywhere — fixing it once fixes it everywhere (fewer tokens).
+
+## Context & memory (always)
+- This phase's memory = `.helm/DESIGN.md` + the component template + `state.json`. Keep them current — they survive a `/clear`.
+- Rehydrate from `.helm/PRD.md`, not the PRD chat.
+- Keep working context **≤ 40% (hard 50%)**; if approaching, write `.helm/handoff.md` then `/compact` or `/clear` and re-bootstrap.
+- Before `helm advance` (or ending the session), write `.helm/handoff.md`. After advancing, `/clear` so the Setup phase starts fresh.
