@@ -33,6 +33,8 @@ export const PHASE_REGISTRY = {
   },
 };
 
+// The `available: false` arms below are forward-compat hooks: a future Helm
+// version may register a phase that exists in PHASE_ORDER but isn't built yet.
 export function nextAction(state, registry = PHASE_REGISTRY) {
   const phase = state.currentPhase;
   const entry = registry[phase];

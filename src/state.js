@@ -35,16 +35,16 @@ export function writeState(path, state) {
 
 export function advanceState(state) {
   validateState(state);
-  const idx = PHASE_ORDER.indexOf(state.currentPhase);
+  const out = { ...state, phases: { ...(state.phases || {}) } };
+  const idx = PHASE_ORDER.indexOf(out.currentPhase);
   const next = PHASE_ORDER[idx + 1];
-  state.phases = state.phases || {};
-  state.phases[state.currentPhase] = "complete";
+  out.phases[out.currentPhase] = "complete";
   if (!next) {
-    state.phaseStatus = "complete";
+    out.phaseStatus = "complete";
   } else {
-    state.currentPhase = next;
-    state.phaseStatus = "not_started";
-    state.phases[next] = "not_started";
+    out.currentPhase = next;
+    out.phaseStatus = "not_started";
+    out.phases[next] = "not_started";
   }
-  return state;
+  return out;
 }

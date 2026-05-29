@@ -36,9 +36,11 @@ if (cmd === "init") {
   writeState(STATE_PATH, updated);
   console.log(renderStateMd(updated, nextAction(updated)));
 } else if (cmd === "snapshot") {
+  ensureInit();
   const id = snapshot(".", CORE_PATHS, SNAP_ROOT, process.argv[3] || "manual");
   console.log(`Snapshot created: ${id}`);
 } else if (cmd === "rollback") {
+  ensureInit();
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {

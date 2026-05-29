@@ -14,3 +14,11 @@ test("advance from ship (last) stays and marks complete", () => {
   assert.equal(s.currentPhase, "ship");
   assert.equal(s.phaseStatus, "complete");
 });
+
+test("advance does not mutate its input", () => {
+  const input = defaultState();
+  const out = advanceState(input);
+  assert.equal(input.currentPhase, "validate");
+  assert.equal(input.phaseStatus, "not_started");
+  assert.notEqual(out, input);
+});
