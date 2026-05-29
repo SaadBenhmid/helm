@@ -18,6 +18,8 @@ test("init installs bundled assets into the current project", () => {
   assert.ok(existsSync(join(dir, "skills", "helm-bootstrap", "SKILL.md")), "bootstrap skill");
   assert.ok(existsSync(join(dir, "skills", "helm-validate", "SKILL.md")), "validate skill");
   assert.ok(existsSync(join(dir, "templates", "PRD.md")), "PRD template");
+  assert.ok(existsSync(join(dir, "bin", "helm.js")), "local runtime bin");
+  assert.ok(existsSync(join(dir, "src", "router.js")), "local runtime src");
 });
 
 test("init is idempotent (safe to run twice)", () => {

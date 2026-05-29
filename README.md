@@ -32,13 +32,13 @@ It is *not* a framework. It orchestrates the best framework + tools for your pro
 One command in your project folder:
 
 ```bash
-npx helm init
+npx github:SaadBenhmid/helm init
 ```
 
-That installs Helm's brain, phase skills, and `CLAUDE.md` into the folder and creates the
-`.helm/` memory directory. Then open the folder in **Claude Code** (or any AI agent) and just
-talk — Claude runs every Helm command for you, and the only thing it asks is for you to
-**confirm moving between phases**.
+That installs Helm's brain, runtime, phase skills, and `CLAUDE.md` into the folder and creates
+the `.helm/` memory directory. Then open the folder in **Claude Code** (or any AI agent) and just
+talk — Claude runs every Helm command for you (locally, via `node bin/helm.js …`), and the only
+thing it asks is for you to **confirm moving between phases**.
 
 Behind the scenes Claude runs `helm status`, which prints something like:
 
@@ -65,14 +65,15 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 
 | Command | What it does |
 |---------|--------------|
-| `npx helm init` | Install Helm into the current project (skills + CLAUDE.md) and create `.helm/`. |
-| `npx helm status` | Show current phase, status, and the next action. (alias: `helm next`) |
-| `npx helm advance` | Mark the current phase complete and move to the next one. |
-| `npx helm snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
-| `npx helm rollback [id]` | Restore from a snapshot (latest if no id given). |
+| `npx github:SaadBenhmid/helm init` | One-time: install Helm (runtime + skills + CLAUDE.md) into the current project and create `.helm/`. |
+| `node bin/helm.js status` | Show current phase, status, and the next action. (alias: `next`) |
+| `node bin/helm.js advance` | Mark the current phase complete and move to the next one. |
+| `node bin/helm.js snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
+| `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
-> **You don't type these — Claude does.** The AI runs all commands automatically and only asks
-> you to confirm phase transitions. (In a dev checkout you can also run `node bin/helm.js <command>`.)
+> **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime
+> lives locally so the AI runs everything with `node bin/helm.js …` and only asks you to confirm
+> phase transitions.
 
 ---
 

@@ -18,14 +18,15 @@ In your terminal (PowerShell on Windows):
 mkdir InvoiceSnap
 cd InvoiceSnap
 
-# 2. One command — installs Helm into this folder (skills, CLAUDE.md, .helm/ memory)
-npx helm init
+# 2. One command — installs Helm into this folder (runtime, skills, CLAUDE.md, .helm/ memory)
+npx github:SaadBenhmid/helm init
 git init
 ```
 
-That's it. `npx helm init` drops in the brain, the phase skills, and creates the `.helm/`
-memory folder. Now open this folder in **Claude Code** (or your AI agent of choice) — from
-here on, Claude runs the commands; you just chat and confirm.
+That's it. `npx github:SaadBenhmid/helm init` drops in the brain + runtime, the phase skills,
+and creates the `.helm/` memory folder. Now open this folder in **Claude Code** (or your AI
+agent of choice) — from here on, Claude runs the commands (locally via `node bin/helm.js …`);
+you just chat and confirm.
 
 ---
 
@@ -82,7 +83,7 @@ here on, Claude runs the commands; you just chat and confirm.
 > Recorded ✅. Moving to the PRD.
 > 
 > ```
-> npx helm advance
+> node bin/helm.js advance
 > ```
 > You're now on phase **PRD**. 📋
 
@@ -129,7 +130,7 @@ here on, Claude runs the commands; you just chat and confirm.
 
 **Claude:**
 > ```
-> npx helm advance
+> node bin/helm.js advance
 > ```
 > On to the **Mockup**. 🎨
 
@@ -165,7 +166,7 @@ here on, Claude runs the commands; you just chat and confirm.
 **Claude:** *(writes `.helm/DESIGN.md` — colors, fonts, spacing, the green "Paid" rule, tone)*
 > Design identity locked in `.helm/DESIGN.md` ✅ — every screen will follow it automatically.
 > ```
-> npx helm advance
+> node bin/helm.js advance
 > ```
 > Next: **Setup**. 🧱
 
@@ -185,7 +186,7 @@ here on, Claude runs the commands; you just chat and confirm.
 **Claude:** *(sets the slots in `.helm/helm.config.json`, records choices in `.helm/DECISIONS.md`)*
 > Engine configured ✅.
 > ```
-> npx helm advance
+> node bin/helm.js advance
 > ```
 > Time to **build**. 🔁
 
@@ -225,7 +226,7 @@ here on, Claude runs the commands; you just chat and confirm.
 **Claude:** *(finishes slices)*
 > ✅ All build slices done and green.
 > ```
-> npx helm advance
+> node bin/helm.js advance
 > ```
 > Last step: **Ship**. 🚢
 
@@ -254,10 +255,10 @@ here on, Claude runs the commands; you just chat and confirm.
 ## Commands (Claude runs these — you don't have to)
 
 ```powershell
-npx helm status     # where am I? what's next?
-npx helm advance    # finish this phase, move to the next (Claude asks you to confirm first)
-npx helm snapshot   # back up Helm's core before a risky change
-npx helm rollback   # undo to the last snapshot
+node bin/helm.js status     # where am I? what's next?
+node bin/helm.js advance    # finish this phase, move to the next (Claude asks you to confirm first)
+node bin/helm.js snapshot   # back up Helm's core before a risky change
+node bin/helm.js rollback   # undo to the last snapshot
 ```
 
 You never need to type these — Claude runs them automatically. The only moment Claude

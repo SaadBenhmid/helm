@@ -10,8 +10,9 @@ tells you the exact next action. Do not guess the next step — let Helm route y
 
 ## Who runs commands (important)
 
-**You, the AI, run every Helm command yourself** — `npx helm status|advance|snapshot|rollback`
-(or `node bin/helm.js …` in dev). The user never types commands.
+**You, the AI, run every Helm command yourself** with `node bin/helm.js status|advance|snapshot|rollback`
+(the runtime is installed locally in this project by `npx github:SaadBenhmid/helm init`).
+The user never types commands.
 
 - The **only** thing you ask the user to do is **confirm moving to the next phase** before you
   run `helm advance`. Phrase it plainly: *"Ready to move on to <next phase>?"*

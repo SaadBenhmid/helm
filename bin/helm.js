@@ -25,7 +25,8 @@ const cmd = process.argv[2];
 
 if (cmd === "init") {
   // Install bundled assets from the package into the current project (idempotent).
-  for (const asset of ["CLAUDE.md", "skills", "templates"]) {
+  // Includes bin + src so the runtime is local after one bootstrap (no re-download).
+  for (const asset of ["CLAUDE.md", "skills", "templates", "bin", "src"]) {
     const src = join(PKG_ROOT, asset);
     const dest = resolve(asset);
     if (existsSync(src) && resolve(src) !== dest) {
