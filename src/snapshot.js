@@ -1,8 +1,11 @@
 import { cpSync, mkdirSync, existsSync, readdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+let __seq = 0;
+
 export function snapshot(baseDir, paths, snapshotRoot, label = "auto") {
-  const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${label}`;
+  const seq = String(__seq++).padStart(4, "0");
+  const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${seq}-${label}`;
   const dest = join(snapshotRoot, id);
   mkdirSync(dest, { recursive: true });
   for (const p of paths) {

@@ -26,3 +26,9 @@ test("unknown phase throws", () => {
 test("registry marks validate available", () => {
   assert.equal(PHASE_REGISTRY.validate.available, true);
 });
+
+test("completing the final phase reports done", () => {
+  const a = nextAction({ currentPhase: "ship", phaseStatus: "complete" });
+  assert.equal(a.phase, "done");
+  assert.match(a.message, /complete/i);
+});

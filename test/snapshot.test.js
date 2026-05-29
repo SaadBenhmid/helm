@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { snapshot, listSnapshots, rollback } from "../src/snapshot.js";
@@ -45,4 +45,22 @@ test("rollback defaults to latest snapshot", () => {
   const restored = rollback(base, snapRoot);
   assert.equal(restored, latest);
   assert.equal(readFileSync(join(base, "src", "core.js"), "utf8"), "v2");
+});
+
+test("rollback prunes files added after the snapshot", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "clean");
+  writeFileSync(join(base, "src", "rogue.js"), "added-later");
+  rollback(base, snapRoot, id);
+  assert.equal(existsSync(join(base, "src", "rogue.js")), false);
+});
+
+test("two snapshots with the same label get distinct ids", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const a = snapshot(base, ["src"], snapRoot, "auto");
+  const b = snapshot(base, ["src"], snapRoot, "auto");
+  assert.notEqual(a, b);
+  assert.equal(listSnapshots(snapRoot).length, 2);
 });
