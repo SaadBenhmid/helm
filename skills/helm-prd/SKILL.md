@@ -22,3 +22,9 @@ AI coding agent can execute it without guessing.
 ## Rules
 - No vague criteria ("fast", "intuitive"). Quantify everything.
 - Spec is the source of truth: later code follows this PRD, never the reverse.
+
+## Context & memory (always)
+- This phase's memory = `.helm/PRD.md` + `state.json` + `DECISIONS.md`. Keep them current — they survive a `/clear`.
+- Rehydrate from `.helm/VALIDATION.md` (the conclusions), not the validation chat.
+- Keep working context **≤ 40% (hard 50%)**; if approaching, write `.helm/handoff.md` then `/compact` or `/clear` and re-bootstrap.
+- Before `helm advance` (or ending the session), write `.helm/handoff.md`. After advancing, `/clear` so the Mockup phase starts fresh.

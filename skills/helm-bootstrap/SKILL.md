@@ -16,10 +16,17 @@ out where the project is and what to do next — do not improvise.
    **next action**.
 3. If the output says Helm is not initialized, run `node bin/helm.js init` first,
    then re-run status.
-4. Announce to the user in plain language: *"You're on phase X. Next: Y."*
-5. If the next action names a phase skill (e.g. the Validate phase), invoke that
+4. **Rehydrate cheaply.** Load only the small `.helm/` files you need for this phase:
+   `state.json`, the current phase's artifact (e.g. `VALIDATION.md`, `PRD.md`), and
+   `handoff.md` if it exists. Do **not** re-read earlier phases' conversations — their
+   conclusions are already captured in their artifacts.
+5. Announce to the user in plain language: *"You're on phase X. Next: Y."*
+6. If the next action names a phase skill (e.g. the Validate phase), invoke that
    skill to carry it out.
-6. Before ending a session or clearing context, write `.helm/handoff.md` from the
+7. **Between phases:** after a phase finishes and you run `node bin/helm.js advance`,
+   write `.helm/handoff.md`, then `/clear` and re-invoke this skill — the next phase
+   starts with a fresh context and rehydrates from `.helm/`.
+8. Before ending a session or clearing context, always write `.helm/handoff.md` from the
    template so the next session resumes cleanly.
 
 ## Rules

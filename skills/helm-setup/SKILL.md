@@ -20,3 +20,8 @@ Goal: configure the engine for *this* project so the build loop runs cleanly and
 ## Rules
 - Keep setup near-zero-touch for the user; explain choices in plain language.
 - A framework swap mid-project is a critical action: snapshot first, then confirm.
+
+## Context & memory (always)
+- This phase's memory = `.helm/helm.config.json` (the slots) + `state.json` + `DECISIONS.md`. Keep them current — they survive a `/clear`.
+- Keep working context **≤ 40% (hard 50%)**; if approaching, write `.helm/handoff.md` then `/compact` or `/clear` and re-bootstrap.
+- Before `helm advance` (or ending the session), write `.helm/handoff.md`. After advancing, `/clear` so the Build phase starts fresh.

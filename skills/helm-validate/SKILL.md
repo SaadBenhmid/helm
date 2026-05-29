@@ -28,3 +28,8 @@ before any PRD or code.
 - This is a soft gate: if validation is weak, say so loudly, but the user may
   choose to proceed (their call).
 - Keep it cheap and fast. Evidence over opinion. Don't start building here.
+
+## Context & memory (always)
+- This phase's memory = `.helm/VALIDATION.md` + `state.json` + `DECISIONS.md`. Keep them current — they survive a `/clear`.
+- Keep working context **≤ 40% (hard 50%)**; if approaching, write `.helm/handoff.md` then `/compact` or `/clear` and re-bootstrap.
+- Before `helm advance` (or ending the session), write `.helm/handoff.md`. After advancing, `/clear` so the PRD phase starts fresh and rehydrates from `.helm/` — the validation chat does not carry forward.
