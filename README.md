@@ -56,6 +56,8 @@ Produce a clear go / pivot / kill decision recorded in .helm/VALIDATION.md.
 
 Then let your AI agent invoke the **helm-validate** skill to walk you through Phase 0.
 
+👉 **New here?** See [docs/USAGE.md](docs/USAGE.md) for a full walkthrough — a real-feeling Claude conversation building a SaaS from an empty folder to ship.
+
 ---
 
 ## CLI commands
