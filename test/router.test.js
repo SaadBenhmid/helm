@@ -8,15 +8,17 @@ test("in-progress validate phase returns its guidance", () => {
   assert.match(a.message, /Validate/);
 });
 
-test("completing validate advances to PRD and flags it unbuilt", () => {
+test("completing validate advances to an available PRD phase", () => {
   const a = nextAction({ currentPhase: "validate", phaseStatus: "complete" });
   assert.equal(a.phase, "prd");
-  assert.match(a.message, /not built in this Helm version/);
+  assert.equal(a.available, true);
+  assert.match(a.message, /PRD/);
 });
 
-test("unbuilt phase reports unavailable", () => {
+test("build phase is available with guidance", () => {
   const a = nextAction({ currentPhase: "build", phaseStatus: "in_progress" });
-  assert.equal(a.available, false);
+  assert.equal(a.available, true);
+  assert.match(a.message, /slice/i);
 });
 
 test("unknown phase throws", () => {

@@ -6,11 +6,31 @@ export const PHASE_REGISTRY = {
     available: true,
     nextAction: "Run the market + cost validation. Produce a clear go / pivot / kill decision recorded in .helm/VALIDATION.md.",
   },
-  prd: { label: "PRD", available: false },
-  mockup: { label: "Mockup → Template", available: false },
-  setup: { label: "Setup", available: false },
-  build: { label: "Build loop", available: false },
-  ship: { label: "Ship", available: false },
+  prd: {
+    label: "PRD",
+    available: true,
+    nextAction: "Write the PRD with the helm-prd skill: problem, users, scope + non-goals, tech & infra options ranked by expected #users and budget, and machine-verifiable acceptance criteria. Output .helm/PRD.md.",
+  },
+  mockup: {
+    label: "Mockup → Template",
+    available: true,
+    nextAction: "Use the helm-mockup skill: build a mockup, confirm it, convert it into a reusable component template, confirm the template matches, then write .helm/DESIGN.md (the design identity).",
+  },
+  setup: {
+    label: "Setup",
+    available: true,
+    nextAction: "Use the helm-setup skill: pick the framework for this project, install the code indexer (Serena), and set the model role slots in .helm/helm.config.json.",
+  },
+  build: {
+    label: "Build loop",
+    available: true,
+    nextAction: "Use the helm-build skill: build in small vertical slices (plan → build → review per slice), run tests + the 3 killer checks, update memory, and commit each slice.",
+  },
+  ship: {
+    label: "Ship",
+    available: true,
+    nextAction: "Use the helm-ship skill: run the production-readiness checklist with loud gates on secrets / data-loss / auth. Output .helm/SHIP.md.",
+  },
 };
 
 export function nextAction(state, registry = PHASE_REGISTRY) {
