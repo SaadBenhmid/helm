@@ -1,0 +1,7 @@
+{
+  "name": "helm",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "helm": "bin/helm.js" },
+  "scripts": { "test": "node --test" }
+}
