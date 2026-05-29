@@ -32,3 +32,19 @@ export function writeState(path, state) {
   writeFileSync(path, JSON.stringify(state, null, 2) + "\n");
   return state;
 }
+
+export function advanceState(state) {
+  validateState(state);
+  const out = { ...state, phases: { ...(state.phases || {}) } };
+  const idx = PHASE_ORDER.indexOf(out.currentPhase);
+  const next = PHASE_ORDER[idx + 1];
+  out.phases[out.currentPhase] = "complete";
+  if (!next) {
+    out.phaseStatus = "complete";
+  } else {
+    out.currentPhase = next;
+    out.phaseStatus = "not_started";
+    out.phases[next] = "not_started";
+  }
+  return out;
+}

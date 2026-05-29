@@ -20,9 +20,8 @@ before any PRD or code.
    - A go / pivot / kill threshold — **set before judging**.
 4. Record the decision + rationale in `.helm/VALIDATION.md`.
 5. Log the decision in `.helm/DECISIONS.md`.
-6. When the user confirms the decision, set `currentPhase` stays `validate` and
-   `phaseStatus` to `complete` in `.helm/state.json`, then run
-   `node bin/helm.js status` — it will route to the next phase.
+6. When the user confirms the decision, run `node bin/helm.js advance` to move to
+   the PRD phase.
 
 ## Rules
 
