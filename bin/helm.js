@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import { join } from "node:path";
-import { existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { existsSync, mkdirSync, copyFileSync, cpSync } from "node:fs";
 import { readState, writeState, defaultState, advanceState } from "../src/state.js";
 import { nextAction } from "../src/router.js";
 import { renderStateMd } from "../src/render.js";
 import { snapshot, rollback } from "../src/snapshot.js";
 
+const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const HELM_DIR = ".helm";
 const STATE_PATH = join(HELM_DIR, "state.json");
 const CONFIG_PATH = join(HELM_DIR, "helm.config.json");
@@ -22,10 +24,18 @@ function ensureInit() {
 const cmd = process.argv[2];
 
 if (cmd === "init") {
+  // Install bundled assets from the package into the current project (idempotent).
+  for (const asset of ["CLAUDE.md", "skills", "templates"]) {
+    const src = join(PKG_ROOT, asset);
+    const dest = resolve(asset);
+    if (existsSync(src) && resolve(src) !== dest) {
+      cpSync(src, dest, { recursive: true, force: false, errorOnExist: false });
+    }
+  }
   mkdirSync(HELM_DIR, { recursive: true });
   if (!existsSync(STATE_PATH)) writeState(STATE_PATH, defaultState());
-  if (!existsSync(CONFIG_PATH)) copyFileSync(join("templates", "helm.config.json"), CONFIG_PATH);
-  console.log("Helm initialized in .helm/");
+  if (!existsSync(CONFIG_PATH)) copyFileSync(join(PKG_ROOT, "templates", "helm.config.json"), CONFIG_PATH);
+  console.log("Helm initialized: .helm/ created, skills + CLAUDE.md installed in this project.");
 } else if (cmd === "status" || cmd === "next") {
   ensureInit();
   const state = readState(STATE_PATH);

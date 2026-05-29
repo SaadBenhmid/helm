@@ -4,7 +4,7 @@
 
 It is *not* a framework. It orchestrates the best framework + tools for your project and manages the whole journey around them: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, instantly knows where the project is, and tells you the next step — no memory loss, no re-explaining.
 
-> 📍 **status (v1.1):** The Foundation **plus all six journey phases** are wired into the brain — Validate → PRD → Mockup → Setup → Build → Ship — with `helm advance` to move between them. A few runtime automations remain (see "Still ahead").
+> 📍 **status (v1.2):** Install with one command (`npx helm init`). All six journey phases are wired into the brain — Validate → PRD → Mockup → Setup → Build → Ship — Claude runs every command and you only confirm phase moves. A few runtime automations remain (see "Still ahead").
 
 ---
 
@@ -29,17 +29,18 @@ It is *not* a framework. It orchestrates the best framework + tools for your pro
 
 ## Quick start
 
-From your project folder:
+One command in your project folder:
 
 ```bash
-# 1. Initialize Helm (creates the .helm/ memory folder)
-node bin/helm.js init
-
-# 2. Ask Helm where you are and what's next
-node bin/helm.js status
+npx helm init
 ```
 
-`status` prints something like:
+That installs Helm's brain, phase skills, and `CLAUDE.md` into the folder and creates the
+`.helm/` memory directory. Then open the folder in **Claude Code** (or any AI agent) and just
+talk — Claude runs every Helm command for you, and the only thing it asks is for you to
+**confirm moving between phases**.
+
+Behind the scenes Claude runs `helm status`, which prints something like:
 
 ```
 # Helm — Project State
@@ -64,13 +65,14 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 
 | Command | What it does |
 |---------|--------------|
-| `helm init` | Create `.helm/` with default `state.json` + `helm.config.json`. |
-| `helm status` | Show current phase, status, and the next action. (alias: `helm next`) |
-| `helm advance` | Mark the current phase complete and move to the next one. |
-| `helm snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
-| `helm rollback [id]` | Restore from a snapshot (latest if no id given). |
+| `npx helm init` | Install Helm into the current project (skills + CLAUDE.md) and create `.helm/`. |
+| `npx helm status` | Show current phase, status, and the next action. (alias: `helm next`) |
+| `npx helm advance` | Mark the current phase complete and move to the next one. |
+| `npx helm snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
+| `npx helm rollback [id]` | Restore from a snapshot (latest if no id given). |
 
-> In v1 you run these as `node bin/helm.js <command>`. (A global `helm` shortcut comes later.)
+> **You don't type these — Claude does.** The AI runs all commands automatically and only asks
+> you to confirm phase transitions. (In a dev checkout you can also run `node bin/helm.js <command>`.)
 
 ---
 
@@ -177,4 +179,4 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 node --test
 ```
 
-v1.1 ships **38 tests** across state, advance, config, router, render, snapshot, CLI, skills, phase skills, and end-to-end routing.
+v1.2 ships **49 tests** across state, advance, config, router, render, snapshot, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.

@@ -7,6 +7,8 @@ The example user is a **non-coder**. The SaaS idea: **"InvoiceSnap" — dead-sim
 
 ---
 
+> **You only ever do two things:** (1) run the one setup command below, and (2) **confirm moving between phases.** Claude runs every other command and manages context + memory for you.
+
 ## 0. Set up a new project folder
 
 In your terminal (PowerShell on Windows):
@@ -16,18 +18,14 @@ In your terminal (PowerShell on Windows):
 mkdir InvoiceSnap
 cd InvoiceSnap
 
-# 2. Put Helm into it (copy the engine from your Helm checkout)
-#    Copies the brain, skills, templates, and CLAUDE.md.
-Copy-Item -Recurse "C:\Users\you\Helm\{bin,src,skills,templates,CLAUDE.md}" .
-
-# 3. Start version control + initialize Helm
+# 2. One command — installs Helm into this folder (skills, CLAUDE.md, .helm/ memory)
+npx helm init
 git init
-node bin/helm.js init
 ```
 
-`helm init` creates a `.helm/` folder — that's your project's memory.
-
-Now open this folder in **Claude Code** (or your AI agent of choice).
+That's it. `npx helm init` drops in the brain, the phase skills, and creates the `.helm/`
+memory folder. Now open this folder in **Claude Code** (or your AI agent of choice) — from
+here on, Claude runs the commands; you just chat and confirm.
 
 ---
 
@@ -84,7 +82,7 @@ Now open this folder in **Claude Code** (or your AI agent of choice).
 > Recorded ✅. Moving to the PRD.
 > 
 > ```
-> node bin/helm.js advance
+> npx helm advance
 > ```
 > You're now on phase **PRD**. 📋
 
@@ -131,7 +129,7 @@ Now open this folder in **Claude Code** (or your AI agent of choice).
 
 **Claude:**
 > ```
-> node bin/helm.js advance
+> npx helm advance
 > ```
 > On to the **Mockup**. 🎨
 
@@ -167,7 +165,7 @@ Now open this folder in **Claude Code** (or your AI agent of choice).
 **Claude:** *(writes `.helm/DESIGN.md` — colors, fonts, spacing, the green "Paid" rule, tone)*
 > Design identity locked in `.helm/DESIGN.md` ✅ — every screen will follow it automatically.
 > ```
-> node bin/helm.js advance
+> npx helm advance
 > ```
 > Next: **Setup**. 🧱
 
@@ -187,7 +185,7 @@ Now open this folder in **Claude Code** (or your AI agent of choice).
 **Claude:** *(sets the slots in `.helm/helm.config.json`, records choices in `.helm/DECISIONS.md`)*
 > Engine configured ✅.
 > ```
-> node bin/helm.js advance
+> npx helm advance
 > ```
 > Time to **build**. 🔁
 
@@ -227,7 +225,7 @@ Now open this folder in **Claude Code** (or your AI agent of choice).
 **Claude:** *(finishes slices)*
 > ✅ All build slices done and green.
 > ```
-> node bin/helm.js advance
+> npx helm advance
 > ```
 > Last step: **Ship**. 🚢
 
@@ -253,14 +251,17 @@ Now open this folder in **Claude Code** (or your AI agent of choice).
 
 ---
 
-## Handy commands during any session
+## Commands (Claude runs these — you don't have to)
 
 ```powershell
-node bin/helm.js status     # where am I? what's next?
-node bin/helm.js advance    # finish this phase, move to the next
-node bin/helm.js snapshot   # back up Helm's core before a risky change
-node bin/helm.js rollback   # undo to the last snapshot
+npx helm status     # where am I? what's next?
+npx helm advance    # finish this phase, move to the next (Claude asks you to confirm first)
+npx helm snapshot   # back up Helm's core before a risky change
+npx helm rollback   # undo to the last snapshot
 ```
+
+You never need to type these — Claude runs them automatically. The only moment Claude
+pauses for you is to confirm a phase move.
 
 ## What lived in `.helm/` by the end
 
