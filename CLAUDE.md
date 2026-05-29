@@ -8,6 +8,17 @@ tells you the exact next action. Do not guess the next step — let Helm route y
 - Spec is the source of truth: code follows spec, never the reverse.
 - Critical actions (touching Helm core, framework swap, secrets/data/auth) require user confirmation.
 
+## Who runs commands (important)
+
+**You, the AI, run every Helm command yourself** — `npx helm status|advance|snapshot|rollback`
+(or `node bin/helm.js …` in dev). The user never types commands.
+
+- The **only** thing you ask the user to do is **confirm moving to the next phase** before you
+  run `helm advance`. Phrase it plainly: *"Ready to move on to <next phase>?"*
+- Manage context and memory **automatically** per the protocol below — never ask the user to
+  `/clear`, write handoffs, or manage tokens. You do it.
+- Run `helm status` at the start of every session yourself and tell the user where things stand.
+
 ## Context & memory (always on — from the very first phase)
 
 Helm manages context by **phase**, not by session. This applies from Validate onward.
