@@ -4,7 +4,7 @@
 
 It is *not* a framework. It orchestrates the best framework + tools for your project and manages the whole journey around them: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, instantly knows where the project is, and tells you the next step — no memory loss, no re-explaining.
 
-> 📍 **v1 status:** This release ships the **Foundation** — the brain, memory, config, safety net, and the first phase (**P0 Validate**) working end-to-end. The remaining phases are on the roadmap below.
+> 📍 **status (v1.1):** The Foundation **plus all six journey phases** are wired into the brain — Validate → PRD → Mockup → Setup → Build → Ship — with `helm advance` to move between them. A few runtime automations remain (see "Still ahead").
 
 ---
 
@@ -64,6 +64,7 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 |---------|--------------|
 | `helm init` | Create `.helm/` with default `state.json` + `helm.config.json`. |
 | `helm status` | Show current phase, status, and the next action. (alias: `helm next`) |
+| `helm advance` | Mark the current phase complete and move to the next one. |
 | `helm snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
 | `helm rollback [id]` | Restore from a snapshot (latest if no id given). |
 
@@ -149,15 +150,22 @@ See `docs/superpowers/specs/2026-05-29-helm-ai-coding-system-design.md` §10 for
 
 ---
 
-## Roadmap (next plans)
+## The full journey (all phases shipped)
 
-| Plan | Adds |
-|------|------|
-| 2 | 📋 **PRD phase** — best-practice spec; tech/infra options ranked by your #users + budget |
-| 3 | 🎨 **Mockup → reusable template** + `DESIGN.md` design identity |
-| 4 | 🔁 **Build loop** — plan/build/review model slots + Serena code map |
-| 5 | 🧠🔄 **Context-cap automation** + token economy + self-evolve engine |
-| 6 | 🚢 **Ship** — production checklist + loud killer gates |
+All six phases are now wired into the brain. `helm advance` moves you through them:
+
+| Phase | Skill | What it does |
+|-------|-------|--------------|
+| 💡 Validate | `helm-validate` | Market + cost check → go / pivot / kill (`VALIDATION.md`) |
+| 📋 PRD | `helm-prd` | Best-practice spec; tech/infra options ranked by #users + budget (`PRD.md`) |
+| 🎨 Mockup → Template | `helm-mockup` | Confirmed mockup → reusable component template → `DESIGN.md` identity |
+| 🧱 Setup | `helm-setup` | Pick framework + install Serena indexer + set model role slots |
+| 🔁 Build loop | `helm-build` | Slice-by-slice plan→build→review, context cap, CR protocol, self-evolve |
+| 🚢 Ship | `helm-ship` | Production checklist + loud gates on secrets / data-loss / auth (`SHIP.md`) |
+
+### Still ahead (future hardening)
+- Runtime context-meter + auto-compact automation (currently rule-guided).
+- A global `helm` shortcut + framework-selection scoring + smoke-test-on-copy for self-evolve.
 
 ---
 
@@ -167,4 +175,4 @@ See `docs/superpowers/specs/2026-05-29-helm-ai-coding-system-design.md` §10 for
 node --test
 ```
 
-v1 ships **30 tests** across state, config, router, render, snapshot, CLI, skills, and end-to-end routing.
+v1.1 ships **38 tests** across state, advance, config, router, render, snapshot, CLI, skills, phase skills, and end-to-end routing.
