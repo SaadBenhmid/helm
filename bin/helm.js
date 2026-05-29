@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { join } from "node:path";
 import { existsSync, mkdirSync, copyFileSync } from "node:fs";
-import { readState, writeState, defaultState } from "../src/state.js";
+import { readState, writeState, defaultState, advanceState } from "../src/state.js";
 import { nextAction } from "../src/router.js";
 import { renderStateMd } from "../src/render.js";
 import { snapshot, rollback } from "../src/snapshot.js";
@@ -30,6 +30,11 @@ if (cmd === "init") {
   ensureInit();
   const state = readState(STATE_PATH);
   console.log(renderStateMd(state, nextAction(state)));
+} else if (cmd === "advance") {
+  ensureInit();
+  const updated = advanceState(readState(STATE_PATH));
+  writeState(STATE_PATH, updated);
+  console.log(renderStateMd(updated, nextAction(updated)));
 } else if (cmd === "snapshot") {
   const id = snapshot(".", CORE_PATHS, SNAP_ROOT, process.argv[3] || "manual");
   console.log(`Snapshot created: ${id}`);
@@ -37,5 +42,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init|status|next|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init|status|next|advance|snapshot [label]|rollback [id]>");
 }
