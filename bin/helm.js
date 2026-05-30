@@ -71,10 +71,17 @@ if (cmd === "init") {
   }
 } else if (cmd === "hooks") {
   if (process.argv[3] === "install") {
+    let existing = {};
+    if (existsSync(SETTINGS_PATH)) {
+      try {
+        existing = JSON.parse(readFileSync(SETTINGS_PATH, "utf8"));
+      } catch {
+        console.error(".claude/settings.json is not valid JSON — fix or remove it, then re-run.");
+        process.exit(1);
+      }
+    }
     mkdirSync(".claude", { recursive: true });
-    const existing = existsSync(SETTINGS_PATH) ? JSON.parse(readFileSync(SETTINGS_PATH, "utf8")) : {};
-    const merged = mergeHooks(existing);
-    writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2) + "\n");
+    writeFileSync(SETTINGS_PATH, JSON.stringify(mergeHooks(existing), null, 2) + "\n");
     console.log("Helm hooks installed in .claude/settings.json (SessionStart, SessionEnd, PreCompact).");
   } else {
     console.log("Usage: helm hooks install");
@@ -96,7 +103,7 @@ if (cmd === "init") {
   try {
     if (existsSync(STATE_PATH)) {
       const ri = process.argv.indexOf("--reason");
-      const reason = ri > -1 ? process.argv[ri + 1] : "manual";
+      const reason = ri > -1 && process.argv[ri + 1] ? process.argv[ri + 1] : "manual";
       const state = readState(STATE_PATH);
       writeFileSync(HANDOFF_PATH, renderHandoff(state, reason, nextAction(state).message));
       console.log(`Helm captured handoff (${reason}).`);

@@ -20,8 +20,8 @@ export function lintMemory({ stateText, present = [] } = {}) {
     }
   }
 
-  for (const f of ["DECISIONS.md", "ISSUES.md"]) {
-    if (!present.includes(f)) findings.push({ level: "warn", msg: `${f} missing — decisions/issues aren't being recorded.` });
+  for (const f of ["DECISIONS.md", "ISSUES.md", "LEARNINGS.md"]) {
+    if (!present.includes(f)) findings.push({ level: "warn", msg: `${f} missing — memory logs aren't seeded (run \`helm init\`).` });
   }
   if (!present.includes("handoff.md")) {
     findings.push({ level: "warn", msg: "handoff.md missing — no resume note for the next session (install hooks: `helm hooks install`)." });

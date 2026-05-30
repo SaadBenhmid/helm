@@ -13,21 +13,19 @@ export function helmHooks(runner = DEFAULT_RUNNER) {
   };
 }
 
-function hasHelmCommand(group, runner) {
-  if (!group || !Array.isArray(group.hooks)) return false;
-  return group.hooks.some((h) => typeof h.command === "string" && h.command.includes(runner));
-}
-
 // Merge Helm's hooks into an existing settings object without clobbering other
 // hooks or settings. Idempotent: running twice does not duplicate Helm entries.
+// Matches on the EXACT command string (not a substring) to avoid false positives.
 export function mergeHooks(settings = {}, runner = DEFAULT_RUNNER) {
   const out = { ...settings, hooks: { ...(settings.hooks || {}) } };
   const helm = helmHooks(runner);
   for (const [event, groups] of Object.entries(helm)) {
+    const ourCommands = groups.flatMap((g) => g.hooks.map((h) => h.command));
     const existing = Array.isArray(out.hooks[event]) ? [...out.hooks[event]] : [];
-    if (!existing.some((g) => hasHelmCommand(g, runner))) {
-      existing.push(...groups);
-    }
+    const alreadyPresent = existing.some(
+      (g) => Array.isArray(g.hooks) && g.hooks.some((h) => ourCommands.includes(h.command))
+    );
+    if (!alreadyPresent) existing.push(...groups);
     out.hooks[event] = existing;
   }
   return out;
