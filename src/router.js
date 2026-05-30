@@ -1,6 +1,11 @@
-import { PHASE_ORDER } from "./state.js";
+import { orderFor } from "./state.js";
 
 export const PHASE_REGISTRY = {
+  adopt: {
+    label: "Adopt",
+    available: true,
+    nextAction: "Use the helm-adopt skill: map the existing codebase, write .helm/CODEBASE.md (stack, architecture, patterns), index it with Serena, and seed .helm/DECISIONS.md — before changing anything.",
+  },
   validate: {
     label: "Validate",
     available: true,
@@ -41,8 +46,9 @@ export function nextAction(state, registry = PHASE_REGISTRY) {
   if (!entry) throw new Error(`unknown phase: ${phase}`);
 
   if (state.phaseStatus === "complete") {
-    const idx = PHASE_ORDER.indexOf(phase);
-    const next = PHASE_ORDER[idx + 1];
+    const order = orderFor(state);
+    const idx = order.indexOf(phase);
+    const next = order[idx + 1];
     if (!next) return { phase: "done", available: true, message: "All phases complete. Ready to ship. 🚢" };
     const nextEntry = registry[next];
     return {
