@@ -8,3 +8,5 @@ node_modules/
 .preview/
 .claude/launch.json
 helm-dashboard.html
+
+.demo/
