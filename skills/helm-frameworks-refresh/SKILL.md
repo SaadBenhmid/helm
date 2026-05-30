@@ -16,7 +16,7 @@ browse the web, so the *CLI* just reads/ranks/flags-staleness; the *refresh* is 
 
 ## Steps
 1. **Read the current registry** at `.helm/frameworks.json` (fall back to the package
-   `templates/frameworks.json`). Note its `schema` and `lastVerified`.
+   `.helm/runtime/templates/frameworks.json`). Note its `schema` and `lastVerified`.
 2. **Research the market.** Use real web research (the `firecrawl` / `deep-research` skills or
    web search) for current (this year) **AI coding *workflow* frameworks** — the methodology /
    orchestration systems that drive how an agent builds software (phases, planning, memory, TDD,

@@ -12,9 +12,7 @@ export function init(argv) {
     const plan = [
       "CLAUDE.md",
       "skills/ (bundled skills)",
-      "templates/ (bundled templates)",
-      ".helm/runtime/bin/ (isolated local runtime)",
-      ".helm/runtime/src/ (isolated local runtime)",
+      ".helm/runtime/ (isolated local runtime + bundled templates/skills mirror)",
       STATE_PATH,
       CONFIG_PATH,
       join(HELM_DIR, "DECISIONS.md"),
@@ -44,11 +42,16 @@ export function init(argv) {
       cpSync(src, dest, { recursive: true, force: true, errorOnExist: false });
     }
   }
-  // Install project-facing assets (skills, templates, CLAUDE.md) at the root where
-  // Claude Code and the user expect them. force:false never clobbers app files.
-  // Source is PKG_ROOT — which, when init runs from the isolated runtime, is the
-  // complete mirror above, so deleted root assets are restored from it.
-  for (const asset of ["CLAUDE.md", "skills", "templates"]) {
+  // Install project-facing assets at the root where Claude Code and the user expect
+  // them: CLAUDE.md (the entry point) and skills/ (loaded by the agent). force:false
+  // never clobbers app files. Source is PKG_ROOT — which, when init runs from the
+  // isolated runtime, is the complete mirror above, so deleted root assets are
+  // restored from it.
+  // NOTE: templates/ is deliberately NOT placed at the project root — host apps
+  // (Django/Rails/Flask) own a root templates/, so Helm reads its templates from the
+  // runtime mirror (.helm/runtime/templates) and the phase skills point there.
+  // (Follow-up audit P1.)
+  for (const asset of ["CLAUDE.md", "skills"]) {
     const src = join(PKG_ROOT, asset);
     const dest = resolve(asset);
     if (existsSync(src) && resolve(src) !== dest) {

@@ -16,12 +16,22 @@ const REPO = process.cwd();
 // LIVE top-level src/bin when Helm itself is being developed (follow-up audit P1).
 const normalize = (a) => a.map((p) => p.replace(/\\/g, "/"));
 
-test("corePaths in an installed host app protects .helm/runtime, never app src/bin", () => {
+test("corePaths in an installed host app snapshots ONLY .helm/ paths, never root dirs", () => {
   const dir = mkdtempSync(join(tmpdir(), "helm-cp-app-"));
   writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "my-app" }));
   const paths = normalize(corePaths(dir));
+  // Never any root directory that shares the app's namespace (Django/Rails/Flask
+  // all own a root templates/) — rollback must not be able to prune user files.
   assert.ok(!paths.includes("src"), "must not include app src/");
   assert.ok(!paths.includes("bin"), "must not include app bin/");
+  assert.ok(!paths.includes("templates"), "must not include root templates/ (follow-up audit P1)");
+  assert.ok(!paths.includes("skills"), "must not include root skills/");
+  assert.ok(!paths.includes("CLAUDE.md"), "must not snapshot root CLAUDE.md");
+  // Everything Helm owns in a host app lives under .helm/.
+  assert.ok(
+    paths.every((p) => p.startsWith(".helm/") || p.startsWith(".helm\\")),
+    `all host-app core paths must live under .helm/ — got ${paths.join(", ")}`
+  );
   assert.ok(paths.includes(".helm/runtime"), "must protect .helm/runtime");
 });
 
@@ -93,6 +103,27 @@ test("rollback restores the isolated runtime but leaves app src/ untouched", () 
   assert.equal(readFileSync(join(base, "src", "app.js"), "utf8"), "APP-V2", "rollback must not touch app src/");
 });
 
+// Follow-up audit P1: a host app (Django/Rails/Flask) owns a root templates/ dir.
+// Rollback must never prune a user file added under it.
+test("rollback never prunes a user file in a host app's root templates/", () => {
+  const base = mkdtempSync(join(tmpdir(), "helm-tmpl-"));
+  writeFileSync(join(base, "package.json"), JSON.stringify({ name: "my-django-app" }));
+  const snapRoot = join(base, ".helm", "snapshots");
+  mkdirSync(join(base, "templates"), { recursive: true });
+  writeFileSync(join(base, "templates", "before.html"), "<p>app view</p>");
+  mkdirSync(join(base, ".helm", "runtime"), { recursive: true });
+  writeFileSync(join(base, ".helm", "runtime", "marker.txt"), "RT");
+
+  const id = snapshot(base, corePaths(base), snapRoot, "test");
+  // The user adds a NEW template after the snapshot.
+  writeFileSync(join(base, "templates", "after.html"), "<p>added later</p>");
+
+  rollback(base, snapRoot, id);
+
+  assert.ok(existsSync(join(base, "templates", "after.html")), "rollback must NOT delete the user's template");
+  assert.ok(existsSync(join(base, "templates", "before.html")), "and must leave existing app templates intact");
+});
+
 test("init wires hooks to the isolated runtime path", () => {
   const dir = mkdtempSync(join(tmpdir(), "helm-iso-hooks-"));
   execFileSync("node", [join(REPO, "bin", "helm.js"), "init"], { cwd: dir });
@@ -102,7 +133,8 @@ test("init wires hooks to the isolated runtime path", () => {
 });
 
 // Follow-up audit P2a: the isolated runtime must be a COMPLETE package mirror so a
-// re-init invoked from it can repair missing root assets (templates/skills/CLAUDE.md).
+// re-init invoked from it can repair missing root assets (skills/ + CLAUDE.md;
+// templates/ is intentionally never placed at the project root).
 test("init makes .helm/runtime a complete package mirror", () => {
   const dir = mkdtempSync(join(tmpdir(), "helm-mirror-"));
   execFileSync("node", [join(REPO, "bin", "helm.js"), "init"], { cwd: dir });
@@ -111,12 +143,30 @@ test("init makes .helm/runtime a complete package mirror", () => {
   }
 });
 
+// Follow-up audit review (HIGH): in host-app mode the snapshot only captures
+// .helm/runtime, so rollback must RE-SYNC the root mirror copies (CLAUDE.md, skills)
+// from the restored runtime — otherwise a rolled-back core change leaves root drifted.
+test("rollback re-syncs root CLAUDE.md from the restored runtime (host-app mode)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-rollback-sync-"));
+  const helm = (args) => execFileSync("node", [join(REPO, "bin", "helm.js"), ...args], { cwd: dir });
+  helm(["init"]);
+  helm(["snapshot", "pre"]);
+  // Simulate a bad core change that corrupted the root CLAUDE.md after the snapshot.
+  writeFileSync(join(dir, "CLAUDE.md"), "CORRUPTED");
+  helm(["rollback"]);
+  const restored = readFileSync(join(dir, "CLAUDE.md"), "utf8");
+  assert.notEqual(restored, "CORRUPTED", "rollback must re-sync root CLAUDE.md from the runtime mirror");
+  assert.match(restored, /Helm/, "restored CLAUDE.md should be the real Helm one");
+});
+
 test("re-init from the isolated runtime restores a deleted root asset", () => {
   const dir = mkdtempSync(join(tmpdir(), "helm-repair-"));
   execFileSync("node", [join(REPO, "bin", "helm.js"), "init"], { cwd: dir });
   // Delete a root asset, then re-init using the ISOLATED runtime (PKG_ROOT=.helm/runtime).
-  rmSync(join(dir, "templates"), { recursive: true, force: true });
-  assert.ok(!existsSync(join(dir, "templates")), "precondition: templates removed");
+  rmSync(join(dir, "CLAUDE.md"), { force: true });
+  rmSync(join(dir, "skills"), { recursive: true, force: true });
+  assert.ok(!existsSync(join(dir, "CLAUDE.md")), "precondition: CLAUDE.md removed");
   execFileSync("node", [join(dir, ".helm", "runtime", "bin", "helm.js"), "init"], { cwd: dir });
-  assert.ok(existsSync(join(dir, "templates", "PRD.md")), "re-init from runtime must restore templates/");
+  assert.ok(existsSync(join(dir, "CLAUDE.md")), "re-init from runtime must restore CLAUDE.md");
+  assert.ok(existsSync(join(dir, "skills", "helm-bootstrap", "SKILL.md")), "and skills/");
 });

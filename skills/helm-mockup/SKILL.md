@@ -15,7 +15,7 @@ consistent, reusable design system.
 3. Convert the confirmed mockup into a **reusable template**: shared components, design
    tokens, layout primitives (not throwaway screens).
 4. **User confirms the template matches the mockup.**
-5. Write `.helm/DESIGN.md` from `templates/DESIGN.md`: colors, typography, spacing,
+5. Write `.helm/DESIGN.md` from `.helm/runtime/templates/DESIGN.md`: colors, typography, spacing,
    component rules, tone/voice. Every later coding step reads this so the UI never drifts.
 6. Run `node .helm/runtime/bin/helm.js advance` to move to Setup.
 

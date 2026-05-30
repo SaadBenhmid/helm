@@ -17,7 +17,10 @@ test("init installs bundled assets into the current project", () => {
   assert.ok(existsSync(join(dir, "CLAUDE.md")), "CLAUDE.md");
   assert.ok(existsSync(join(dir, "skills", "helm-bootstrap", "SKILL.md")), "bootstrap skill");
   assert.ok(existsSync(join(dir, "skills", "helm-validate", "SKILL.md")), "validate skill");
-  assert.ok(existsSync(join(dir, "templates", "PRD.md")), "PRD template");
+  // Templates are NOT placed at the project root (Django/Rails/Flask own templates/);
+  // they live only under the isolated runtime, where the skills read them from.
+  assert.ok(!existsSync(join(dir, "templates")), "must not create a root templates/ (collision risk)");
+  assert.ok(existsSync(join(dir, ".helm", "runtime", "templates", "PRD.md")), "PRD template in runtime");
   // Runtime is isolated under .helm/runtime (never the app's root src/ or bin/).
   assert.ok(existsSync(join(dir, ".helm", "runtime", "bin", "helm.js")), "isolated runtime bin");
   assert.ok(existsSync(join(dir, ".helm", "runtime", "src", "router.js")), "isolated runtime src");

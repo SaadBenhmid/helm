@@ -10,7 +10,7 @@ before any PRD or code.
 
 ## Steps
 
-1. Copy `templates/VALIDATION.md` to `.helm/VALIDATION.md` if it does not exist.
+1. Copy `.helm/runtime/templates/VALIDATION.md` to `.helm/VALIDATION.md` if it does not exist.
 2. Set `phaseStatus` to `in_progress`: edit `.helm/state.json` or guide via questions.
 3. Work through the template WITH the user, one topic at a time (match `comms` style):
    - One-line idea, then an *uncomfortably specific* target user.

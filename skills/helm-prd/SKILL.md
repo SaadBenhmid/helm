@@ -9,7 +9,7 @@ Goal: a spec that is the source of truth for everything built later. Write it so
 AI coding agent can execute it without guessing.
 
 ## Steps
-1. Copy `templates/PRD.md` to `.helm/PRD.md` if absent. Set phaseStatus in_progress.
+1. Copy `.helm/runtime/templates/PRD.md` to `.helm/PRD.md` if absent. Set phaseStatus in_progress.
 2. Fill it WITH the user, one section at a time (match `comms` style):
    - Problem, target users, scope, and explicit **non-goals** (state what NOT to build).
    - Ask expected **#users** and **budget**, then present **2–3 ranked tech + infra options**

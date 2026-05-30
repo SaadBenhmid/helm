@@ -39,8 +39,17 @@ export const RUNTIME_DIR = join(HELM_DIR, "runtime");
 //     and the app's own src/ + bin must NEVER be touched. (Audit P0.)
 // The bundled skills/templates/CLAUDE.md/config are Helm-owned in both cases.
 export function corePaths(root = process.cwd()) {
-  const base = ["skills", "templates", "CLAUDE.md", CONFIG_PATH];
-  return isHelmSourceRepo(root) ? ["src", "bin", ...base] : [RUNTIME_DIR, ...base];
+  if (isHelmSourceRepo(root)) {
+    // Developing Helm itself: the tracked top-level files ARE Helm; protect them.
+    return ["src", "bin", "skills", "templates", "CLAUDE.md", CONFIG_PATH];
+  }
+  // Installed in a host app: snapshot ONLY Helm-owned paths under .helm/ — never a
+  // root directory that shares the app's namespace. Host apps (Django/Rails/Flask)
+  // own a root templates/ (and may own skills/), so including those let rollback
+  // prune the user's files. The runtime mirror under .helm/runtime already holds the
+  // canonical skills/templates/CLAUDE.md, and re-init restores the root copies from
+  // it — so nothing Helm-owned is lost. (Follow-up audit P1.)
+  return [RUNTIME_DIR, CONFIG_PATH];
 }
 
 // Is `root` the Helm SOURCE package itself (so root src/bin ARE the live runtime),
@@ -50,7 +59,7 @@ export function corePaths(root = process.cwd()) {
 // AND its actual runtime files present at root — not just the name (a host app
 // could coincidentally be named "helm"). Invocation-independent: it inspects the
 // project tree, not which runner launched us. Any failure → safe "host app" default.
-function isHelmSourceRepo(root) {
+export function isHelmSourceRepo(root = process.cwd()) {
   try {
     const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
     if (!pkg || pkg.name !== "helm") return false;

@@ -20,7 +20,7 @@ export function helmHooks(runner = DEFAULT_RUNNER) {
 // `node .helm/runtime/bin/helm.js capture`. Anchored to the known Helm runtime
 // paths so an unrelated user script (e.g. `node tools/my-helm.js capture`) is never
 // pruned. Used to remove stale copies on upgrade.
-const HELM_HOOK_RE = /(?:^|[\s"'`/\\])(?:\.helm[\\/]runtime[\\/])?bin[\\/]helm\.js\s+(?:inject|capture)\b/;
+const HELM_HOOK_RE = /node\s+(?:\.helm[\\/]runtime[\\/])?bin[\\/]helm\.js\s+(?:inject|capture)\b/;
 const isHelmHookGroup = (g) =>
   g && Array.isArray(g.hooks) && g.hooks.some((h) => HELM_HOOK_RE.test((h && h.command) || ""));
 
