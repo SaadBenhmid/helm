@@ -74,6 +74,9 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `node bin/helm.js hooks install` | Wire Claude Code hooks so memory is captured automatically. |
 | `node bin/helm.js models init` | Scaffold git-ignored `.env.helm` + launcher scripts for the Kimi build model. |
 | `node bin/helm.js lint` | Health-check `.helm/` memory (missing logs, stale/out-of-order state). |
+| `node bin/helm.js security` | Scan for leaked secrets / insecure config; blocks `ship` until clean (override: `advance --force`). |
+| `node bin/helm.js score` | Print the project scorecard — process-health grade vs the promise (honest about what's unproven). |
+| `node bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard + artifacts. |
 | `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
 > **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime
@@ -174,7 +177,7 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 | 🎨 Mockup → Template *(new only)* | `helm-mockup` | Confirmed mockup → reusable component template → `DESIGN.md` identity |
 | 🧱 Setup *(new only)* | `helm-setup` | Pick framework + install Serena indexer + set model role slots |
 | 🔁 Build loop | `helm-build` | Slice-by-slice plan→build→review, context cap, CR protocol, self-evolve, brownfield guardrails |
-| 🚢 Ship | `helm-ship` | Production checklist + loud gates on secrets / data-loss / auth (`SHIP.md`) |
+| 🚢 Ship | `helm-ship` | Production checklist; **code-enforced** secret scan (`helm security`) blocks shipping, plus loud gates on data-loss / auth (`SHIP.md`) |
 
 **New project:** Validate → PRD → Mockup → Setup → Build → Ship.
 **Existing project:** Adopt → (PRD → Build → Ship) per milestone — run `helm milestone` to start the next one.

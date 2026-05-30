@@ -10,16 +10,23 @@ Goal: a real, deployable production SaaS — not a demo.
 ## Steps
 1. Copy `templates/SHIP.md` to `.helm/SHIP.md` if absent.
 2. Work the checklist. **Loud gates** (hard to skip) on the 3 killers:
-   - 🔑 **Secrets** — no keys/credentials in code or client bundles; env vars used.
+   - 🔑 **Secrets** — *enforced by code*: run `node bin/helm.js security`. It scans for
+     leaked credentials (AWS/Stripe/OpenAI/Anthropic/GitHub/GCP keys, private keys, DB
+     connection strings, Supabase `service_role`) and client-bundle exposure. Fix every
+     🛑 BLOCK before shipping. This is not a self-attested checkbox — `helm advance` out of
+     `ship` runs the same scan and refuses to advance while blockers remain.
    - 🗑️ **Data-loss** — backups/migrations safe; destructive ops guarded.
    - 🔓 **Auth** — every protected route checks identity + permissions.
 3. Verify build, run the full test suite, and do a real run-through of the golden path.
 4. Record the result in `.helm/SHIP.md` and `.helm/DECISIONS.md`.
-5. Run `node bin/helm.js advance` to mark the journey complete.
+5. Run `node bin/helm.js advance` to mark the journey complete. The secret-scan gate runs
+   automatically here; to ship past a finding, `helm advance --force` overrides it and logs
+   the waived fingerprints to `DECISIONS.md` (the user's explicit responsibility).
 
 ## Rules
-- The 3 killer gates are loud by default; the user may override with explicit confirmation
-  (their responsibility), but never silently.
+- The 3 killer gates are loud by default. The secrets gate is enforced by `helm security` and
+  blocks `advance`; the user may override only with explicit `--force`, which is logged — never
+  silent. Suppress a confirmed false positive with a `gitleaks:allow` comment on the line.
 
 ## Brownfield (existing projects)
 - Run the **full existing test/build suite** as a regression gate before shipping — the change

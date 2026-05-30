@@ -1,7 +1,7 @@
 # Ship Checklist — <Product Name>
 
 ## Killer gates (loud)
-- [ ] 🔑 Secrets: no keys in code/client; env vars only
+- [ ] 🔑 Secrets: `helm security` clean (no BLOCK findings) — enforced by `helm advance`
 - [ ] 🗑️ Data-loss: backups/migrations safe; destructive ops guarded
 - [ ] 🔓 Auth: every protected route checks identity + permissions
 

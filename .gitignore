@@ -3,3 +3,8 @@ node_modules/
 .firecrawl/
 *.log
 .env.helm
+
+# dev/verification scaffolding + generated output
+.preview/
+.claude/launch.json
+helm-dashboard.html

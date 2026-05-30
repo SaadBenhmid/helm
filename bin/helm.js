@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, relative, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, copyFileSync, cpSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, copyFileSync, cpSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync, lstatSync } from "node:fs";
 import { readState, writeState, defaultState, advanceState, startMilestone } from "../src/state.js";
 import { nextAction } from "../src/router.js";
 import { renderStateMd, renderHandoff } from "../src/render.js";
 import { snapshot, rollback } from "../src/snapshot.js";
 import { mergeHooks } from "../src/hooks.js";
 import { lintMemory } from "../src/lint.js";
+import { scanSecurity } from "../src/security.js";
+import { scoreProject } from "../src/score.js";
+import { renderDashboard } from "../src/dashboard.js";
 import { ensureGitignored, kimiEnvExample, KIMI_LAUNCHER_PS1, KIMI_LAUNCHER_SH } from "../src/models.js";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -24,6 +27,97 @@ function ensureInit() {
     console.error("Helm not initialized. Run: helm init");
     process.exit(1);
   }
+}
+
+// Directories never worth scanning for secrets.
+const SEC_SKIP_DIRS = new Set([".git", "node_modules", ".helm", ".firecrawl", ".claude", "coverage", ".next", ".cache"]);
+const SEC_MAX_BYTES = 512 * 1024;
+function secSkipFile(rel) {
+  return (
+    /\.min\.js$/.test(rel) ||
+    /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$/.test(rel) ||
+    /\.(png|jpe?g|gif|webp|ico|svg|pdf|zip|gz|tar|mp4|mov|woff2?|ttf|eot|wasm|map)$/i.test(rel)
+  );
+}
+const secIsEnvFile = (rel) => /(^|\/)\.env(\.|$)/.test(rel);
+
+// Walk the project: `files` (content map, scannable source) + `paths` (all files,
+// for repo-level hygiene checks like .env-not-ignored). Reads stay off secret files.
+function collectRepo(root) {
+  const files = {};
+  const paths = [];
+  (function walk(dir) {
+    for (const name of readdirSync(dir)) {
+      const abs = join(dir, name);
+      let st;
+      try {
+        st = lstatSync(abs); // lstat: do not follow symlinks (avoids cycles / escaping the repo)
+      } catch {
+        continue;
+      }
+      if (st.isSymbolicLink()) continue;
+      if (st.isDirectory()) {
+        if (!SEC_SKIP_DIRS.has(name)) walk(abs);
+      } else if (st.isFile()) {
+        const rel = relative(root, abs).split("\\").join("/");
+        paths.push(rel);
+        if (secIsEnvFile(rel) || secSkipFile(rel) || st.size > SEC_MAX_BYTES) continue;
+        try {
+          files[rel] = readFileSync(abs, "utf8");
+        } catch {
+          /* unreadable/binary — skip */
+        }
+      }
+    }
+  })(root);
+  return { files, paths };
+}
+
+function runSecurity(root = ".") {
+  const { files, paths } = collectRepo(root);
+  const gitignore = existsSync(join(root, ".gitignore")) ? readFileSync(join(root, ".gitignore"), "utf8") : "";
+  const findings = scanSecurity({ files, paths, gitignore });
+  // Count inline suppressions so they are never an invisible bypass of the gate.
+  let suppressed = 0;
+  for (const content of Object.values(files)) {
+    for (const line of content.split(/\r?\n/)) {
+      if (/gitleaks:allow|helm:allow-secret/.test(line)) suppressed++;
+    }
+  }
+  return { findings, suppressed };
+}
+
+function printFinding(f) {
+  const tag = f.level === "block" ? "🛑 BLOCK" : "⚠ WARN ";
+  const loc = f.line ? `${f.file}:${f.line}` : f.file;
+  console.log(`${tag} ${loc}  [${f.rule}] ${f.hint}  (${f.fingerprint})`);
+}
+
+const ARTIFACT_FILES = ["VALIDATION.md", "PRD.md", "DESIGN.md", "SHIP.md", "CODEBASE.md", "DECISIONS.md", "ISSUES.md", "LEARNINGS.md", "handoff.md"];
+
+// Gather everything the scorecard + dashboard need from .helm/ and the repo (read-only).
+function gatherProject() {
+  ensureInit();
+  const state = readState(STATE_PATH);
+  const present = readdirSync(HELM_DIR).filter((f) => statSync(join(HELM_DIR, f)).isFile());
+  const stateText = readFileSync(STATE_PATH, "utf8");
+  const lint = lintMemory({ stateText, present });
+  const { findings, suppressed } = runSecurity(".");
+  const artifacts = {};
+  for (const n of ARTIFACT_FILES) {
+    const p = join(HELM_DIR, n);
+    if (existsSync(p)) artifacts[n] = readFileSync(p, "utf8");
+  }
+  const score = scoreProject({
+    state,
+    present,
+    lint,
+    security: findings,
+    artifacts,
+    decisions: artifacts["DECISIONS.md"] || "",
+    issues: artifacts["ISSUES.md"] || "",
+  });
+  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")) };
 }
 
 const cmd = process.argv[2];
@@ -72,9 +166,74 @@ if (cmd === "init") {
   console.log(renderStateMd(state, nextAction(state)));
 } else if (cmd === "advance") {
   ensureInit();
-  const updated = advanceState(readState(STATE_PATH));
+  const state = readState(STATE_PATH);
+  // Security gate: leaving the ship phase requires a clean secret scan (or an audited --force).
+  if (state.currentPhase === "ship") {
+    const force = process.argv.includes("--force");
+    const { findings, suppressed } = runSecurity(".");
+    if (suppressed) console.warn(`ℹ ${suppressed} line(s) suppressed via gitleaks:allow — confirm they aren't hiding real secrets.`);
+    const blockers = findings.filter((f) => f.level === "block");
+    if (blockers.length) {
+      if (!force) {
+        console.error("🔐 Ship blocked — security scan found secrets/insecure config:\n");
+        for (const f of findings) printFinding(f);
+        console.error(`\n${blockers.length} blocking finding(s). Fix them, or override (your responsibility) with: helm advance --force`);
+        process.exit(1);
+      }
+      // Audited override: record what was waved through, with fingerprints.
+      const decisions = join(HELM_DIR, "DECISIONS.md");
+      if (!existsSync(decisions)) {
+        writeFileSync(decisions, "# Decisions Log\n\n| Date | Decision | Why | Phase |\n|------|----------|-----|-------|\n");
+      }
+      const date = new Date().toISOString().slice(0, 10);
+      const fps = blockers.map((f) => f.fingerprint).join(", ");
+      appendFileSync(decisions, `| ${date} | Security gate overridden (--force): shipped past ${blockers.length} blocker(s) [${fps}] | explicit user override | ship |\n`);
+      console.warn(`⚠ Overriding ${blockers.length} security blocker(s) via --force — logged to DECISIONS.md.`);
+    }
+  }
+  const updated = advanceState(state);
   writeState(STATE_PATH, updated);
   console.log(renderStateMd(updated, nextAction(updated)));
+} else if (cmd === "security") {
+  const { findings, suppressed } = runSecurity(".");
+  if (findings.length === 0) {
+    console.log("Security scan clean. ✅");
+  } else {
+    for (const f of findings) printFinding(f);
+    const blockers = findings.filter((f) => f.level === "block").length;
+    const warns = findings.length - blockers;
+    console.log(`\n${blockers} blocking, ${warns} warning finding(s). Suppress a false positive with a \`gitleaks:allow\` comment on the line.`);
+  }
+  if (suppressed) console.log(`ℹ ${suppressed} line(s) suppressed via gitleaks:allow — confirm they aren't hiding real secrets.`);
+  if (findings.some((f) => f.level === "block")) process.exit(1);
+} else if (cmd === "score") {
+  const { score, projectName } = gatherProject();
+  console.log(`\nHelm scorecard — ${projectName}`);
+  console.log(`Grade ${score.grade}   ${score.total}/100\n`);
+  for (const d of score.dimensions) {
+    const ratio = d.max ? d.score / d.max : 0;
+    const filled = Math.round(ratio * 16);
+    const bar = "█".repeat(filled) + "░".repeat(16 - filled);
+    console.log(`  ${d.name.padEnd(22)} ${bar} ${String(d.score).padStart(2)}/${d.max}  ${d.detail}`);
+  }
+  console.log(`\n  Not yet proven (needs verify + deploy):`);
+  for (const p of score.pending) console.log(`   ○ ${p.name} — ${p.why}`);
+  console.log("");
+} else if (cmd === "dashboard") {
+  const g = gatherProject();
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+  const html = renderDashboard({
+    state: g.state,
+    score: g.score,
+    security: g.security,
+    artifacts: g.artifacts,
+    projectName: g.projectName,
+    generatedAt: stamp,
+  });
+  const arg = process.argv[3];
+  const out = arg && !arg.startsWith("-") ? arg : "helm-dashboard.html";
+  writeFileSync(out, html);
+  console.log(`Dashboard written: ${out} — open it in a browser. (read-only snapshot)`);
 } else if (cmd === "milestone") {
   ensureInit();
   try {
@@ -161,5 +320,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init [--existing]|status|next|advance|milestone|hooks install|models init|inject|capture|lint|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init [--existing]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|dashboard [out.html]|snapshot [label]|rollback [id]>");
 }
