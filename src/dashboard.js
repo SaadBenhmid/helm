@@ -1,4 +1,5 @@
 import { orderFor } from "./state.js";
+import { buildBoard } from "./board.js";
 
 // Pure renderers for Helm's read-only project dashboard.
 //   mdToHtml(md)        — compact, safe markdown → HTML (headings/lists/tables/checkboxes).
@@ -388,13 +389,131 @@ function renderVerify(verify) {
   </section>`;
 }
 
-export function renderDashboard({ state = {}, score = {}, security = {}, artifacts = {}, projectName = "", generatedAt = "", telemetry = null, goals = null, verify = null, live = false } = {}) {
+// ---- Jira-style board / issues / milestones / activity ----
+
+function issueBadge(type) {
+  const t = String(type || "").toLowerCase();
+  const cls = t.includes("bug")
+    ? "bad"
+    : t.includes("add")
+      ? "good"
+      : t.includes("solved") || t.includes("done")
+        ? "good"
+        : t.includes("drop")
+          ? "muted"
+          : t.includes("goal")
+            ? "ink"
+            : "brass";
+  return `<span class="badge ${cls}">${escapeHtml(type || "task")}</span>`;
+}
+
+function renderCard(c) {
+  return `
+      <div class="card">
+        <div class="card-top"><span class="card-id mono">${escapeHtml(c.id || "")}</span>${issueBadge(c.badge)}</div>
+        <div class="card-title">${escapeHtml(c.title || "")}</div>
+        ${c.note ? `<div class="card-note muted small">${escapeHtml(c.note)}</div>` : ""}
+      </div>`;
+}
+
+function renderColumn(title, cards) {
+  return `
+    <div class="bcol">
+      <div class="bcol-head">${escapeHtml(title)}<span class="count">${cards.length}</span></div>
+      <div class="bcol-body">${cards.map(renderCard).join("") || '<div class="empty muted small">Nothing here yet</div>'}</div>
+    </div>`;
+}
+
+function renderBoard(board) {
+  return `
+  <div class="board">
+    ${renderColumn("Backlog", board.backlog)}
+    ${renderColumn("In progress", board.inProgress)}
+    ${renderColumn("Done", board.done)}
+  </div>`;
+}
+
+function renderBacklog(board) {
+  const items = board.backlog || [];
+  return `<div class="list">${items.map(renderCard).join("") || '<div class="muted">Backlog is empty — nothing waiting.</div>'}</div>`;
+}
+
+function renderIssues(issues) {
+  const open = (issues && issues.open) || [];
+  const solved = (issues && issues.solved) || [];
+  const row = (i, kind) => `
+      <div class="issue-row ${kind}">
+        <span class="card-id mono">${escapeHtml(i.id || "")}</span>
+        ${issueBadge(kind === "solved" ? "solved" : i.type)}
+        <span class="issue-title">${escapeHtml(i.title || "")}</span>
+        <span class="issue-meta muted small">${escapeHtml(kind === "solved" ? `${i.fix || ""}${i.date ? " · " + i.date : ""}` : i.notes || "")}</span>
+      </div>`;
+  const openRows = open.map((i) => row(i, "open")).join("") || '<div class="muted small">No open issues.</div>';
+  const solvedRows = solved.map((i) => row(i, "solved")).join("") || '<div class="muted small">None solved yet.</div>';
+  return `
+  <div class="issues">
+    <h3 class="sub">Open <span class="count">${open.length}</span></h3>
+    ${openRows}
+    <h3 class="sub spaced">Solved <span class="count">${solved.length}</span></h3>
+    ${solvedRows}
+  </div>`;
+}
+
+function renderMilestones(state) {
+  const order = orderFor(state);
+  const phases = state.phases || {};
+  const completed = order.filter((p) => phases[p] === "complete").length;
+  const rows = order
+    .map((p) => {
+      const status = phases[p] === "complete" ? "done" : p === state.currentPhase ? "current" : "todo";
+      const m = PHASE_META[p] || { label: p, glyph: "•" };
+      const word = status === "done" ? "done" : status === "current" ? "in progress" : "to do";
+      return `
+      <div class="ms-row ${status}">
+        <span class="ms-glyph">${m.glyph}</span>
+        <span class="ms-label">${escapeHtml(m.label)}</span>
+        <span class="ms-status">${word}</span>
+      </div>`;
+    })
+    .join("");
+  return `
+  <div class="milestones">
+    <div class="ms-kicker muted small">Milestone ${escapeHtml(String(state.milestone || 1))} · ${completed}/${order.length} phases complete</div>
+    ${renderCourse(state)}
+    <div class="ms-list">${rows}</div>
+  </div>`;
+}
+
+function renderActivity(decisions, learnings) {
+  const dec = decisions ? `<div class="md">${mdToHtml(decisions)}</div>` : '<p class="muted">No decisions logged yet.</p>';
+  const learn = learnings
+    ? `<details class="artifact" style="margin-top:14px"><summary><span class="art-icon">✺</span><span class="art-label">Learnings</span></summary><div class="art-body md">${mdToHtml(learnings)}</div></details>`
+    : "";
+  return `<div class="activity">${dec}${learn}</div>`;
+}
+
+const NAV = [
+  { id: "overview", label: "Overview", glyph: "◷" },
+  { id: "board", label: "Board", glyph: "▦" },
+  { id: "backlog", label: "Backlog", glyph: "≣" },
+  { id: "issues", label: "Issues", glyph: "◬" },
+  { id: "milestones", label: "Milestones", glyph: "◉" },
+  { id: "artifacts", label: "Artifacts", glyph: "❡" },
+  { id: "activity", label: "Activity", glyph: "➜" },
+];
+
+export function renderDashboard({ state = {}, score = {}, security = {}, artifacts = {}, projectName = "", generatedAt = "", telemetry = null, goals = null, verify = null, issues = { open: [], solved: [] }, decisions = "", learnings = "", live = false } = {}) {
   const order = orderFor(state);
   const phases = state.phases || {};
   const done = order.filter((p) => phases[p] === "complete").length;
   const pct = order.length ? Math.round((done / order.length) * 100) : 0;
   const type = state.projectType === "existing" ? "brownfield" : "greenfield";
   const name = projectName || "Untitled project";
+  const board = buildBoard({ issues, goals, state });
+  const grade = score.grade || "–";
+  const gradeClass = grade === "A" || grade === "B" ? "good" : grade === "C" ? "warn" : "bad";
+  const curLabel = (PHASE_META[state.currentPhase] || {}).label || state.currentPhase || "—";
+  const openCount = (issues && issues.open ? issues.open.length : 0);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -558,11 +677,87 @@ ${live ? '<meta http-equiv="refresh" content="5">' : ""}
   @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(47,125,91,.5)}70%{box-shadow:0 0 0 7px rgba(47,125,91,0)}100%{box-shadow:0 0 0 0 rgba(47,125,91,0)}}
 
   footer{margin-top:30px;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.1em}
+
+  /* ---- Jira-style app shell ---- */
+  .app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+  @media(max-width:780px){.app{grid-template-columns:1fr}}
+  .side{background:linear-gradient(180deg,var(--card),var(--paper-2));border-right:1.5px solid var(--ink);padding:22px 16px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
+  @media(max-width:780px){.side{position:static;height:auto;border-right:none;border-bottom:1.5px solid var(--ink)}}
+  .side .brand{gap:11px}
+  .side .wheel{width:32px;height:32px}
+  .side .brand h1{font-size:1.15rem;letter-spacing:.3em}
+  .side .brand .tag{font-size:.58rem;letter-spacing:.24em}
+  .nav{display:flex;flex-direction:column;gap:3px}
+  .nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:none;border-radius:9px;
+    padding:9px 12px;font:inherit;font-size:.95rem;color:var(--ink-2);cursor:pointer}
+  .nav button:hover{background:rgba(168,119,46,.10);color:var(--ink)}
+  .nav button.active{background:var(--brass);color:#fff;font-weight:600;box-shadow:0 6px 16px -10px rgba(168,119,46,.9)}
+  .nav .nav-glyph{width:1.2em;text-align:center;opacity:.9}
+  .nav .nav-badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.66rem;background:rgba(178,58,58,.14);color:var(--bad);border-radius:999px;padding:1px 7px}
+  .nav button.active .nav-badge{background:rgba(255,255,255,.25);color:#fff}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:.78rem;color:var(--ink-2)}
+  .side-foot .kv{display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+  .mini-grade{font-family:'IBM Plex Mono',monospace;font-weight:700}
+  .mini-grade.good{color:var(--brass)} .mini-grade.warn{color:var(--warn)} .mini-grade.bad{color:var(--bad)}
+
+  .main{padding:30px 34px 64px;min-width:0;max-width:1180px}
+  @media(max-width:780px){.main{padding:22px 18px 48px}}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .view-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:0 0 20px;border-bottom:1.5px solid var(--ink);padding-bottom:12px}
+  .view-head h2{margin:0;font-size:1.5rem;font-weight:900;letter-spacing:.01em}
+  .view-head .crumb{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--brass)}
+
+  /* Board */
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+  @media(max-width:780px){.board{grid-template-columns:1fr}}
+  .bcol{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:120px}
+  .bcol-head{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:2px 4px 12px}
+  .bcol-head .count{margin-left:auto;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+  .bcol-body{display:flex;flex-direction:column;gap:9px}
+  .card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:9px;padding:11px 13px;box-shadow:0 8px 18px -16px rgba(22,38,59,.6)}
+  .card-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .card-id{font-size:.68rem;color:var(--muted)}
+  .card-title{font-weight:600;font-size:.94rem;line-height:1.3}
+  .card-note{margin-top:5px}
+  .empty{padding:10px 4px;text-align:center}
+  .list{display:flex;flex-direction:column;gap:10px;max-width:760px}
+
+  /* Badges */
+  .badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 8px;border:1px solid}
+  .badge.bad{color:var(--bad);border-color:var(--bad);background:rgba(178,58,58,.08)}
+  .badge.good{color:var(--good);border-color:var(--good);background:rgba(47,125,91,.08)}
+  .badge.brass{color:var(--brass);border-color:var(--brass);background:rgba(168,119,46,.08)}
+  .badge.ink{color:var(--ink-2);border-color:var(--line);background:var(--paper-2)}
+  .badge.muted{color:var(--muted);border-color:var(--line);background:var(--paper-2)}
+
+  /* Issues */
+  .issues .sub{font-size:.95rem;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .issues .sub.spaced{margin-top:22px}
+  .issues .count{font-family:'IBM Plex Mono',monospace;font-size:.7rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--ink-2)}
+  .issue-row{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 13px;margin-bottom:8px}
+  .issue-row .badge{margin-left:0}
+  .issue-title{font-weight:600;font-size:.92rem}
+  .issue-meta{margin-left:auto;text-align:right;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .issue-row.solved .issue-title{color:var(--ink-2)}
+
+  /* Milestones */
+  .ms-kicker{margin-bottom:14px}
+  .ms-list{margin-top:18px;display:flex;flex-direction:column;gap:8px;max-width:620px}
+  .ms-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px 14px}
+  .ms-row .ms-glyph{color:var(--muted);width:1.3em;text-align:center}
+  .ms-row.done{border-left:3px solid var(--brass)} .ms-row.done .ms-glyph{color:var(--brass)}
+  .ms-row.current{border-left:3px solid var(--ink);box-shadow:0 0 0 3px rgba(22,38,59,.05)} .ms-row.current .ms-glyph{color:var(--ink)}
+  .ms-label{font-weight:600} .ms-row.todo .ms-label{color:var(--muted)}
+  .ms-status{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+
+  .sub{font-weight:600}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header class="topbar">
+  <div class="app">
+    <aside class="side">
       <div class="brand">
         <svg class="wheel" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4">
           <circle cx="50" cy="50" r="20"/><circle cx="50" cy="50" r="7" fill="currentColor" stroke="none"/>
@@ -573,36 +768,85 @@ ${live ? '<meta http-equiv="refresh" content="5">' : ""}
             <line x1="65" y1="35" x2="82" y2="18"/><line x1="35" y1="65" x2="18" y2="82"/>
           </g>
         </svg>
-        <div><h1>Helm</h1><div class="tag">project console</div></div>
+        <div><h1>Helm</h1><div class="tag">${live ? "live console" : "project console"}</div></div>
       </div>
-      <div class="meta">
-        ${live ? '<span class="chip live-dot">live</span>' : ""}
-        <span class="chip name">${escapeHtml(name)}</span>
-        <span class="chip">${escapeHtml(type)}</span>
-        <span class="chip">milestone ${escapeHtml(String(state.milestone || 1))}</span>
+      <nav class="nav">
+        ${NAV.map((n) => `<button class="${n.id === "overview" ? "active" : ""}" data-view="${n.id}"><span class="nav-glyph" aria-hidden="true">${n.glyph}</span>${escapeHtml(n.label)}${n.id === "issues" && openCount ? `<span class="nav-badge">${openCount}</span>` : ""}</button>`).join("")}
+      </nav>
+      <div class="side-foot">
+        ${live ? '<div class="live-dot">live · auto-refresh</div>' : ""}
+        <div class="kv"><span>Project</span><strong>${escapeHtml(name)}</strong></div>
+        <div class="kv"><span>Phase</span><strong>${escapeHtml(curLabel)}</strong></div>
+        <div class="kv"><span>Health</span><strong class="mini-grade ${gradeClass}">${escapeHtml(grade)} · ${score.total ?? 0}/100</strong></div>
+        <div class="kv"><span>Milestone</span><strong>${escapeHtml(String(state.milestone || 1))} · ${escapeHtml(type)}</strong></div>
       </div>
-    </header>
+    </aside>
 
-    <section class="hero">
-      <div class="kicker">Charted course</div>
-      <div class="progress"><b>${pct}%</b><span class="muted">of the journey charted · now on <strong>${escapeHtml((PHASE_META[state.currentPhase] || {}).label || state.currentPhase || "—")}</strong></span></div>
-      ${renderCourse(state)}
-    </section>
+    <main class="main">
+      <section class="view active" id="overview">
+        <div class="view-head"><h2>Overview</h2><span class="crumb">current state · ${pct}% charted</span></div>
+        <section class="hero">
+          <div class="progress"><b>${pct}%</b><span class="muted">of the journey charted · now on <strong>${escapeHtml(curLabel)}</strong></span></div>
+        </section>
+        <div class="grid">
+          <div class="col">${renderScore(score)}</div>
+          <div class="col">
+            ${renderSecurity(security)}
+            ${renderVerify(verify)}
+            ${renderTelemetry(telemetry)}
+            ${renderGoals(goals)}
+          </div>
+        </div>
+      </section>
 
-    <div class="grid">
-      <div class="col">${renderScore(score)}</div>
-      <div class="col">
-        ${renderSecurity(security)}
-        ${renderVerify(verify)}
-        ${renderTelemetry(telemetry)}
-        ${renderGoals(goals)}
-      </div>
-    </div>
+      <section class="view" id="board">
+        <div class="view-head"><h2>Board</h2><span class="crumb">kanban · issues + goals</span></div>
+        ${renderBoard(board)}
+      </section>
 
-    ${renderArtifacts(artifacts, state)}
+      <section class="view" id="backlog">
+        <div class="view-head"><h2>Backlog</h2><span class="crumb">${board.backlog.length} item(s) waiting</span></div>
+        ${renderBacklog(board)}
+      </section>
 
-    <footer>Generated by Helm · read-only snapshot${generatedAt ? " · " + escapeHtml(generatedAt) : ""}</footer>
+      <section class="view" id="issues">
+        <div class="view-head"><h2>Issues</h2><span class="crumb">open + solved</span></div>
+        ${renderIssues(issues)}
+      </section>
+
+      <section class="view" id="milestones">
+        <div class="view-head"><h2>Milestones</h2><span class="crumb">the journey</span></div>
+        ${renderMilestones(state)}
+      </section>
+
+      <section class="view" id="artifacts">
+        <div class="view-head"><h2>Artifacts</h2><span class="crumb">PRD, design, ship &amp; more</span></div>
+        ${renderArtifacts(artifacts, state)}
+      </section>
+
+      <section class="view" id="activity">
+        <div class="view-head"><h2>Activity</h2><span class="crumb">decisions &amp; learnings</span></div>
+        ${renderActivity(decisions, learnings)}
+      </section>
+
+      <footer>Generated by Helm · read-only snapshot${generatedAt ? " · " + escapeHtml(generatedAt) : ""}</footer>
+    </main>
   </div>
+  <script>
+    (function(){
+      var nav = document.querySelectorAll('.nav button');
+      var views = document.querySelectorAll('.view');
+      nav.forEach(function(btn){
+        btn.addEventListener('click', function(){
+          nav.forEach(function(b){ b.classList.remove('active'); });
+          views.forEach(function(v){ v.classList.remove('active'); });
+          btn.classList.add('active');
+          var el = document.getElementById(btn.getAttribute('data-view'));
+          if (el) el.classList.add('active');
+        });
+      });
+    })();
+  </script>
 </body>
 </html>`;
 }
