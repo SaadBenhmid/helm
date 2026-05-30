@@ -264,15 +264,24 @@ test("verify panel escapes malicious check values", () => {
 
 // ---- Live mode ----
 
-test("live mode injects a 5s refresh meta and a live indicator", () => {
+test("live mode polls in the background (no full-page reload) and shows a live indicator", () => {
   const html = renderDashboard({ state, score, live: true });
-  assert.match(html, /<meta\s+http-equiv="refresh"\s+content="5">/i);
+  // No meta-refresh — that reloads the page and would reset the active tab.
+  assert.doesNotMatch(html, /http-equiv="refresh"/i);
+  assert.match(html, /var LIVE = true/);
+  assert.match(html, /setInterval/);
   assert.match(html, /live/i);
 });
 
-test("non-live mode does not inject a refresh meta", () => {
+test("non-live mode does not poll", () => {
   const html = renderDashboard({ state, score, live: false });
   assert.doesNotMatch(html, /http-equiv="refresh"/i);
+  assert.match(html, /var LIVE = false/);
+});
+
+test("the active view is restored from the URL hash (survives refresh/return)", () => {
+  const html = renderDashboard({ state, score, live: true });
+  assert.match(html, /location\.hash/);
 });
 
 test("all new panels together render without crashing and stay light theme", () => {

@@ -520,7 +520,6 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${live ? '<meta http-equiv="refresh" content="5">' : ""}
 <title>Helm · ${escapeHtml(name)}</title>
 <style>
   :root{
@@ -835,16 +834,37 @@ ${live ? '<meta http-equiv="refresh" content="5">' : ""}
   <script>
     (function(){
       var nav = document.querySelectorAll('.nav button');
-      var views = document.querySelectorAll('.view');
+      function show(id){
+        if(!document.getElementById(id)) id='overview';
+        nav.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-view')===id); });
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id===id); });
+        return id;
+      }
+      function current(){ var a=document.querySelector('.nav button.active'); return a?a.getAttribute('data-view'):'overview'; }
       nav.forEach(function(btn){
         btn.addEventListener('click', function(){
-          nav.forEach(function(b){ b.classList.remove('active'); });
-          views.forEach(function(v){ v.classList.remove('active'); });
-          btn.classList.add('active');
-          var el = document.getElementById(btn.getAttribute('data-view'));
-          if (el) el.classList.add('active');
+          var id=show(btn.getAttribute('data-view'));
+          try{ history.replaceState(null,'','#'+id); }catch(e){}
         });
       });
+      // Restore the active view from the URL hash so returning/refreshing keeps your place.
+      var h=(location.hash||'').replace('#',''); if(h) show(h);
+
+      var LIVE = ${live ? "true" : "false"};
+      if (LIVE) {
+        // Live mode polls and swaps only the content + sidebar status — no full-page
+        // reload — so your current view (Board, Issues, …) is preserved.
+        setInterval(function(){
+          fetch(location.pathname, {cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
+            var doc = new DOMParser().parseFromString(t, 'text/html');
+            var keep = current();
+            var main = doc.querySelector('.main'), foot = doc.querySelector('.side-foot');
+            if (main) document.querySelector('.main').innerHTML = main.innerHTML;
+            if (foot) document.querySelector('.side-foot').innerHTML = foot.innerHTML;
+            show(keep);
+          }).catch(function(){});
+        }, 5000);
+      }
     })();
   </script>
 </body>
