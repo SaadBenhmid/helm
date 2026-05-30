@@ -72,6 +72,7 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `npx github:SaadBenhmid/helm init --existing` | One-time: adopt an **existing** codebase (starts at the Adopt phase). |
 | `node bin/helm.js milestone` | Start the next feature/fix milestone (loops back to a fresh PRD). |
 | `node bin/helm.js hooks install` | Wire Claude Code hooks so memory is captured automatically. |
+| `node bin/helm.js models init` | Scaffold git-ignored `.env.helm` + launcher scripts for the Kimi build model. |
 | `node bin/helm.js lint` | Health-check `.helm/` memory (missing logs, stale/out-of-order state). |
 | `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
