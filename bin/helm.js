@@ -50,10 +50,15 @@ if (cmd === "init") {
   console.log(renderStateMd(updated, nextAction(updated)));
 } else if (cmd === "milestone") {
   ensureInit();
-  const updated = startMilestone(readState(STATE_PATH));
-  writeState(STATE_PATH, updated);
-  console.log(`Starting milestone ${updated.milestone}.`);
-  console.log(renderStateMd(updated, nextAction(updated)));
+  try {
+    const updated = startMilestone(readState(STATE_PATH));
+    writeState(STATE_PATH, updated);
+    console.log(`Starting milestone ${updated.milestone}.`);
+    console.log(renderStateMd(updated, nextAction(updated)));
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 } else if (cmd === "snapshot") {
   ensureInit();
   const id = snapshot(".", CORE_PATHS, SNAP_ROOT, process.argv[3] || "manual");

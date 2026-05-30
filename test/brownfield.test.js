@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultState, advanceState, startMilestone, orderFor, PHASE_ORDERS, validateState } from "../src/state.js";
@@ -61,6 +61,18 @@ test("startMilestone resets to prd and increments the counter", () => {
   assert.notEqual(next, shipped);
 });
 
+test("startMilestone refuses when the current phase isn't complete", () => {
+  const mid = { projectType: "existing", currentPhase: "build", phaseStatus: "in_progress", milestone: 1, phases: {} };
+  assert.throws(() => startMilestone(mid), /finish \(ship\) the current one first/);
+});
+
+test("validateState rejects a phase that doesn't belong to the project type", () => {
+  assert.throws(
+    () => validateState({ projectType: "new", currentPhase: "adopt", phaseStatus: "not_started" }),
+    /not valid for projectType/
+  );
+});
+
 test("CLI: init --existing creates an existing project starting at adopt", () => {
   const dir = initExisting();
   const state = JSON.parse(readFileSync(join(dir, ".helm", "state.json"), "utf8"));
@@ -70,12 +82,17 @@ test("CLI: init --existing creates an existing project starting at adopt", () =>
   assert.match(out, /Adopt/);
 });
 
-test("CLI: milestone resets to PRD and bumps the counter", () => {
+test("CLI: milestone resets to PRD and bumps the counter (after a completed phase)", () => {
   const dir = initExisting();
+  // Simulate having shipped: mark the current phase complete.
+  const statePath = join(dir, ".helm", "state.json");
+  const s = JSON.parse(readFileSync(statePath, "utf8"));
+  s.phaseStatus = "complete";
+  writeFileSync(statePath, JSON.stringify(s));
   const out = execFileSync("node", [join(REPO, "bin", "helm.js"), "milestone"], { cwd: dir, encoding: "utf8" });
   assert.match(out, /milestone 2/i);
   assert.match(out, /PRD/);
-  const state = JSON.parse(readFileSync(join(dir, ".helm", "state.json"), "utf8"));
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
   assert.equal(state.currentPhase, "prd");
   assert.equal(state.milestone, 2);
 });

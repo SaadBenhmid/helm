@@ -43,6 +43,9 @@ export function validateState(state) {
   }
   if (!ALL_PHASES.includes(state.currentPhase)) throw new Error(`invalid currentPhase: ${state.currentPhase}`);
   if (!STATUSES.includes(state.phaseStatus)) throw new Error(`invalid phaseStatus: ${state.phaseStatus}`);
+  if (state.projectType && !PHASE_ORDERS[state.projectType].includes(state.currentPhase)) {
+    throw new Error(`currentPhase "${state.currentPhase}" is not valid for projectType "${state.projectType}"`);
+  }
   return true;
 }
 
@@ -81,6 +84,9 @@ export function advanceState(state) {
 // Resets to the spec phase ("prd") so the loop is: prd → build → ship → (milestone) → prd …
 export function startMilestone(state) {
   validateState(state);
+  if (state.phaseStatus !== "complete") {
+    throw new Error("cannot start a new milestone: finish (ship) the current one first");
+  }
   const out = { ...state, phases: { ...(state.phases || {}) } };
   out.milestone = (out.milestone || 1) + 1;
   out.currentPhase = "prd";
