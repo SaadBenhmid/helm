@@ -142,7 +142,7 @@ Everything is a swappable slot — change any value, Helm adapts:
 }
 ```
 
-- **models** — the cost-saving pattern: plan with a smart model, build with a cheap strong one, review with a smart one. Fully swappable (all-Claude, Opus+GLM+GPT, etc.).
+- **models** — the cost-saving pattern: plan with a smart model, build with a cheap strong one, review with a smart one. Fully swappable (all-Claude, Opus+GLM+GPT, etc.). Setup guide for running **Kimi K2.6 as the build model inside Claude Code**: [docs/MODELS.md](docs/MODELS.md) (also embedded in the `helm-setup` skill).
 - **contextCap** — keep working context lean (target 40%, hard cap 50%).
 - **comms** — how the AI talks to you (`non-technical` / `some-coding` / `experienced`).
 - **strictness** — `soft` nudges by default; loud checks reserved for the SaaS-killers (secrets / data-loss / auth).
