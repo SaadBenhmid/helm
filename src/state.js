@@ -46,6 +46,58 @@ export function validateState(state) {
   if (state.projectType && !PHASE_ORDERS[state.projectType].includes(state.currentPhase)) {
     throw new Error(`currentPhase "${state.currentPhase}" is not valid for projectType "${state.projectType}"`);
   }
+
+  // milestone, if present, must be a positive integer.
+  if (state.milestone !== undefined) {
+    if (
+      typeof state.milestone !== "number" ||
+      !Number.isInteger(state.milestone) ||
+      state.milestone < 1
+    ) {
+      throw new Error(`invalid milestone: ${state.milestone} (must be a positive integer)`);
+    }
+  }
+
+  // phases, if present, must be an object whose keys belong to the journey for
+  // the projectType and whose values are valid statuses.
+  if (state.phases !== undefined) {
+    if (
+      typeof state.phases !== "object" ||
+      state.phases === null ||
+      Array.isArray(state.phases)
+    ) {
+      throw new Error("phases must be an object");
+    }
+    const order = orderFor(state);
+    for (const [phase, status] of Object.entries(state.phases)) {
+      if (!order.includes(phase)) {
+        throw new Error(
+          `phase "${phase}" is not valid for projectType "${state.projectType || "new"}"`
+        );
+      }
+      if (!STATUSES.includes(status)) {
+        throw new Error(`invalid status for phase "${phase}": ${status}`);
+      }
+    }
+
+    // Consistency: no phase ordered AFTER currentPhase may be "complete".
+    // This is a HARD error EXCEPT for the one shape the memory linter
+    // (src/lint.js) owns: an out-of-order completion while the current phase is
+    // mid-flight ("in_progress"). The linter intentionally parses that state via
+    // validateState() so it can surface a softer *warning* rather than crash, so
+    // we skip the throw only for that case and let lint flag it.
+    const currentIdx = order.indexOf(state.currentPhase);
+    if (currentIdx !== -1 && state.phaseStatus !== "in_progress") {
+      for (const [phase, status] of Object.entries(state.phases)) {
+        if (status === "complete" && order.indexOf(phase) > currentIdx) {
+          throw new Error(
+            `phase "${phase}" is marked complete but is ordered after currentPhase "${state.currentPhase}"`
+          );
+        }
+      }
+    }
+  }
+
   return true;
 }
 

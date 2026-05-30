@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scanSecrets, scanHygiene, scanSecurity } from "../src/security.js";
@@ -172,10 +172,23 @@ test("CLI: helm security exits non-zero on a planted secret, clean otherwise", (
   assert.match(bad.output, /AKIA|aws-access-key|BLOCK/);
 });
 
-test("CLI: ship advance is blocked by a secret and overridable with --force", () => {
-  const dir = mkdtempSync(join(tmpdir(), "helm-gate-"));
-  run(["init"], dir);
-  // Jump state to the ship phase.
+// A real (non-stub) artifact body that passes isRealArtifact, so the artifact
+// gate isn't what blocks these ship tests — the secret gate is.
+const REAL_ARTIFACT =
+  "# Ship\n\nThis is a genuine, sufficiently long ship artifact describing the release,\n" +
+  "rollout plan, and verification done. It exists so the advance artifact gate passes.\n";
+
+// Seed the ship-phase advance gates that are NOT under test here: a real SHIP.md
+// and a passing verify.json. Lets the secret gate be the thing exercised.
+function seedShipGates(dir) {
+  writeFileSync(join(dir, ".helm", "SHIP.md"), REAL_ARTIFACT);
+  writeFileSync(
+    join(dir, ".helm", "verify.json"),
+    JSON.stringify({ passed: true, ranAt: new Date().toISOString(), checks: [] })
+  );
+}
+
+function jumpToShip(dir) {
   const shipState = {
     projectType: "new",
     currentPhase: "ship",
@@ -184,6 +197,13 @@ test("CLI: ship advance is blocked by a secret and overridable with --force", ()
     phases: { validate: "complete", prd: "complete", mockup: "complete", setup: "complete", build: "complete", ship: "in_progress" },
   };
   writeFileSync(join(dir, ".helm", "state.json"), JSON.stringify(shipState));
+}
+
+test("CLI: ship advance is blocked by a secret and overridable with --force", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-gate-"));
+  run(["init"], dir);
+  jumpToShip(dir);
+  seedShipGates(dir); // pass the artifact + verify gates so the secret gate is what blocks
   writeFileSync(join(dir, "leak.js"), `const id = "${FAKE.aws}";\n`);
 
   const blocked = runExpectFail(["advance"], dir);
@@ -194,4 +214,65 @@ test("CLI: ship advance is blocked by a secret and overridable with --force", ()
   assert.match(forced, /complete/i);
   const decisions = readFileSync(join(dir, ".helm", "DECISIONS.md"), "utf8");
   assert.match(decisions, /override/i, "override must be logged to DECISIONS.md");
+});
+
+// ---- Enforcement gates (Batch 2) ----
+
+test("CLI: advance is blocked when the phase artifact is missing, allowed with --force", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-art-"));
+  run(["init"], dir); // greenfield: starts at validate, owes VALIDATION.md
+
+  const blocked = runExpectFail(["advance"], dir);
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.output, /Cannot advance/);
+  assert.match(blocked.output, /VALIDATION\.md/);
+
+  const forced = run(["advance", "--force"], dir);
+  assert.match(forced, /PRD/); // moved on to the next phase
+});
+
+test("CLI: advance is blocked when the phase artifact is a stub", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-stub-"));
+  run(["init"], dir);
+  // A copied-template stub: contains an angle-bracket placeholder → not a real artifact.
+  writeFileSync(join(dir, ".helm", "VALIDATION.md"), "# Validation\n\n<Problem statement>\n");
+  const blocked = runExpectFail(["advance"], dir);
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.output, /stub|placeholder/i);
+});
+
+test("CLI: advance is allowed when the phase artifact is real", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-real-"));
+  run(["init"], dir);
+  writeFileSync(join(dir, ".helm", "VALIDATION.md"), REAL_ARTIFACT);
+  const out = run(["advance"], dir);
+  assert.match(out, /PRD/);
+  const state = JSON.parse(readFileSync(join(dir, ".helm", "state.json"), "utf8"));
+  assert.equal(state.currentPhase, "prd");
+});
+
+test("CLI: leaving ship requires a passing verify.json (overridable with --force)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-verify-"));
+  run(["init"], dir);
+  jumpToShip(dir);
+  // Real SHIP.md so the artifact gate passes, but NO verify.json → verify gate blocks.
+  writeFileSync(join(dir, ".helm", "SHIP.md"), REAL_ARTIFACT);
+
+  const blocked = runExpectFail(["advance"], dir);
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.output, /verif/i);
+
+  const forced = run(["advance", "--force"], dir);
+  assert.match(forced, /complete/i);
+  const decisions = readFileSync(join(dir, ".helm", "DECISIONS.md"), "utf8");
+  assert.match(decisions, /verify gate overridden/i);
+});
+
+test("CLI: init --dry-run prints a write plan and writes nothing", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-dry-"));
+  const out = run(["init", "--dry-run"], dir);
+  assert.match(out, /WRITE PLAN/);
+  assert.match(out, /state\.json/);
+  assert.equal(existsSync(join(dir, ".helm")), false, "dry run must not create .helm");
+  assert.equal(existsSync(join(dir, ".claude")), false, "dry run must not create .claude");
 });

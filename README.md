@@ -1,21 +1,21 @@
-# Helm ⛵ — v1 (Foundation)
+# Helm ⛵ — v1.6.0 (Foundation)
 
-**Helm is an auto-bootstrapping meta-orchestrator for building a production-grade SaaS with AI coding tools** (Claude Code or any AI agent).
+**Helm is an auto-bootstrapping meta-orchestrator that provides workflow scaffolding and guardrails for building a SaaS with AI coding tools** (Claude Code or any AI agent).
 
-It is *not* a framework. It orchestrates the best framework + tools for your project and manages the whole journey around them: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, instantly knows where the project is, and tells you the next step — no memory loss, no re-explaining.
+It is *not* a framework. It orchestrates the best framework + tools for your project and provides best-effort, agent-assisted structure around the whole journey: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, picks up where the project is, and suggests the next step — reducing memory loss and re-explaining.
 
-> 📍 **status (v1.4):** Works on **new *and* existing projects**, with **hook-enforced memory**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves. **Autopilot:** `init` auto-installs memory hooks, so context survives auto-compaction with zero user action — stay in one session and Claude manages context/memory silently.
+> 📍 **status (v1.6.0):** Works on **new *and* existing projects**, with **hook-assisted memory**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves. **Autopilot:** `init` auto-installs memory hooks, so context is captured on a best-effort basis across auto-compaction with minimal user action — stay in one session and Claude manages context/memory in the background.
 
 ---
 
-## What v1 gives you
+## What v1.6.0 gives you
 
 | Piece | What it does |
 |-------|--------------|
-| 🧠 **The brain** | A `helm status` command + bootstrap skill. Every new session reads project state and routes you to the exact next action. |
-| 💾 **Memory** | `.helm/state.json` (where you are) + `DECISIONS.md`, `ISSUES.md`, `handoff.md` templates so context survives across sessions. |
+| 🧠 **The brain** | A `helm status` command + bootstrap skill. Every new session reads project state and suggests the next action. |
+| 💾 **Memory** | `.helm/state.json` (where you are) + `DECISIONS.md`, `ISSUES.md`, `handoff.md` templates so context carries across sessions. |
 | ⚙️ **Config (slots)** | `.helm/helm.config.json` holds swappable slots: framework, model roles (`plan`/`build`/`review`), mockup tool, code indexer, context caps, comms style, strictness. |
-| 🛡️ **Safety net** | `helm snapshot` / `helm rollback` — version Helm before any self-change so nothing can ever be bricked. |
+| 🛡️ **Safety net** | `helm snapshot` / `helm rollback` — snapshot Helm's core files before a self-change so you can restore a last-known-good version. |
 | 💡 **P0 Validate** | A guided phase that pressure-tests your SaaS idea on market + cost and records a **go / pivot / kill** decision in `.helm/VALIDATION.md` before any building. |
 
 ---
@@ -98,7 +98,7 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 4. It invokes the matching phase skill (e.g. `helm-validate`) to do the work.
 5. Before context fills up or the session ends, it writes `.helm/handoff.md` so the next session resumes cleanly.
 
-This is what makes Helm **self-driving** across sessions.
+This is what helps Helm **carry context** across sessions.
 
 ---
 
@@ -160,10 +160,10 @@ Everything is a swappable slot — change any value, Helm adapts:
 
 ## Safety model
 
-Helm can improve itself, but **the AI can never brick it**:
+Helm can improve itself, and these guardrails make a self-change recoverable:
 
-- 🔒 **Protected core** — self-improvement is *additive only*; it never rewrites core logic. The core is fully editable **by you, the owner** — your call, your responsibility.
-- 📸 **Snapshot before change** — `helm snapshot` versions the core; `helm rollback` restores last-known-good (and prunes anything added since).
+- 🔒 **Protected core** — self-improvement is *additive only* by convention; it avoids rewriting core logic. The core is fully editable **by you, the owner** — your call, your responsibility.
+- 📸 **Snapshot before change** — `helm snapshot` records the snapshotted core paths; `helm rollback` restores those paths to their snapshotted contents (overwriting current versions). It restores the core to a last-known-good state — it does **not** scan for or delete unrelated new files you've added elsewhere.
 - 👤 **You confirm** critical actions (core changes, framework swaps, the 3 killers).
 
 See `docs/superpowers/specs/2026-05-29-helm-ai-coding-system-design.md` §10 for the full safety design.
@@ -193,7 +193,8 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 - **SessionEnd / PreCompact** → `helm capture` writes `.helm/handoff.md` before context is lost.
 
 So you can stay in **one long session**: Claude Code auto-compacts when the window fills, the hooks
-make that lossless, and Helm rehydrates from `.helm/`. No `/compact`, no `/clear`, no re-explaining.
+capture a handoff on a best-effort basis before that happens, and Helm rehydrates from `.helm/`.
+The aim is to minimize `/compact`, `/clear`, and re-explaining.
 (`helm hooks install` re-installs them if needed; `helm lint` health-checks memory.)
 
 ### Still ahead (future hardening)
@@ -208,4 +209,4 @@ make that lossless, and Helm rehydrates from `.helm/`. No `/compact`, no `/clear
 node --test
 ```
 
-v1.4 ships **78 tests** across state, advance, brownfield (project types + adopt + milestone), config, router, render, snapshot, hooks, lint, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.
+v1.6.0 runs the full `node --test` suite across state, advance, brownfield (project types + adopt + milestone), config, router, render, snapshot, hooks, lint, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.

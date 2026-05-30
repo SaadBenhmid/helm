@@ -64,3 +64,59 @@ test("two snapshots with the same label get distinct ids", () => {
   assert.notEqual(a, b);
   assert.equal(listSnapshots(snapRoot).length, 2);
 });
+
+test("snapshot writes a manifest listing the captured tracked paths", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "m");
+  const manifest = JSON.parse(readFileSync(join(snapRoot, id, "manifest.json"), "utf8"));
+  assert.equal(manifest.id, id);
+  assert.deepEqual(manifest.paths, ["src"]);
+});
+
+test("manifest only records paths that actually existed at snapshot time", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  // "ghost" does not exist on disk, so it must NOT be in the captured list.
+  const id = snapshot(base, ["src", "ghost"], snapRoot, "m");
+  const manifest = JSON.parse(readFileSync(join(snapRoot, id, "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.paths, ["src"]);
+  assert.deepEqual(manifest.absent, ["ghost"]);
+});
+
+test("rollback restores tracked files to their snapshot contents", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  writeFileSync(join(base, "src", "other.js"), "orig");
+  const id = snapshot(base, ["src"], snapRoot, "clean");
+  writeFileSync(join(base, "src", "core.js"), "mutated");
+  writeFileSync(join(base, "src", "other.js"), "mutated");
+  rollback(base, snapRoot, id);
+  assert.equal(readFileSync(join(base, "src", "core.js"), "utf8"), "v1");
+  assert.equal(readFileSync(join(base, "src", "other.js"), "utf8"), "orig");
+});
+
+test("rollback prunes a file added inside a tracked dir after the snapshot", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "clean");
+  // Add a nested file after the snapshot — it must be gone after rollback.
+  writeFileSync(join(base, "src", "added-inside.js"), "new");
+  assert.equal(existsSync(join(base, "src", "added-inside.js")), true);
+  rollback(base, snapRoot, id);
+  assert.equal(existsSync(join(base, "src", "added-inside.js")), false);
+  // The original tracked file is still intact.
+  assert.equal(readFileSync(join(base, "src", "core.js"), "utf8"), "v1");
+});
+
+test("rollback prunes a tracked path that did not exist at snapshot time", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  // Track a second top-level path that doesn't exist yet.
+  const id = snapshot(base, ["src", "build"], snapRoot, "clean");
+  // Create it after the snapshot; rollback should remove it (snapshot had none).
+  mkdirSync(join(base, "build"), { recursive: true });
+  writeFileSync(join(base, "build", "out.js"), "artifact");
+  rollback(base, snapRoot, id);
+  assert.equal(existsSync(join(base, "build")), false);
+});

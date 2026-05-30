@@ -87,6 +87,155 @@ test("detectStack: python detects pytest config as a test signal", () => {
   assert.equal(stack.commands.test, "pytest");
 });
 
+test("detectStack: node with pnpm-lock uses pnpm commands", () => {
+  const pkg = JSON.stringify({ scripts: { build: "tsc", test: "vitest" } });
+  const stack = detectStack({
+    files: { "package.json": pkg },
+    paths: ["package.json", "pnpm-lock.yaml"],
+  });
+  assert.equal(stack.kind, "node");
+  assert.deepEqual(stack.commands, {
+    install: "pnpm install",
+    build: "pnpm run build",
+    test: "pnpm test",
+    start: null,
+  });
+});
+
+test("detectStack: node with yarn.lock uses yarn commands", () => {
+  const pkg = JSON.stringify({ scripts: { build: "webpack", test: "jest" } });
+  const stack = detectStack({
+    files: { "package.json": pkg },
+    paths: ["package.json", "yarn.lock"],
+  });
+  assert.equal(stack.kind, "node");
+  assert.deepEqual(stack.commands, {
+    install: "yarn",
+    build: "yarn build",
+    test: "yarn test",
+    start: null,
+  });
+});
+
+test("detectStack: node with bun.lockb uses bun commands", () => {
+  const pkg = JSON.stringify({ scripts: { build: "bun build", test: "bun test", start: "bun run ." } });
+  const stack = detectStack({
+    files: { "package.json": pkg },
+    paths: ["package.json", "bun.lockb"],
+  });
+  assert.equal(stack.kind, "node");
+  assert.deepEqual(stack.commands, {
+    install: "bun install",
+    build: "bun run build",
+    test: "bun test",
+    start: "bun start",
+  });
+});
+
+test("detectStack: workspaces array flags a workspace root", () => {
+  const pkg = JSON.stringify({ workspaces: ["packages/*"], scripts: { test: "jest" } });
+  const stack = detectStack({ files: { "package.json": pkg }, paths: ["package.json"] });
+  assert.equal(stack.kind, "node");
+  assert.equal(stack.workspace, true);
+  assert.equal(stack.commands.test, "npm test");
+});
+
+test("detectStack: pnpm-workspace.yaml flags a workspace root even without workspaces field", () => {
+  const stack = detectStack({
+    files: { "package.json": "{}" },
+    paths: ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml"],
+  });
+  assert.equal(stack.kind, "node");
+  assert.equal(stack.workspace, true);
+  assert.equal(stack.commands.install, "pnpm install");
+});
+
+test("detectStack: no workspace flag for a plain node project", () => {
+  const stack = detectStack({ files: { "package.json": "{}" } });
+  assert.equal(stack.workspace, undefined);
+  assert.equal(stack.target, undefined);
+});
+
+test("detectStack: nested apps/web/package.json detected when no root package.json", () => {
+  const pkg = JSON.stringify({ scripts: { build: "next build", test: "vitest" } });
+  const stack = detectStack({
+    files: { "apps/web/package.json": pkg },
+    paths: ["apps/web/package.json", "README.md"],
+  });
+  assert.equal(stack.kind, "node");
+  assert.equal(stack.target, "apps/web");
+  assert.equal(stack.commands.build, "npm run build");
+});
+
+test("detectStack: nested packages/* package.json detected and picked deterministically", () => {
+  const pkg = JSON.stringify({ scripts: { test: "jest" } });
+  const stack = detectStack({
+    files: { "packages/core/package.json": pkg },
+    paths: ["packages/ui/package.json", "packages/core/package.json"],
+  });
+  assert.equal(stack.kind, "node");
+  // Sorted order → "packages/core" comes before "packages/ui".
+  assert.equal(stack.target, "packages/core");
+});
+
+test("detectStack: python via poetry pyproject", () => {
+  const stack = detectStack({
+    files: { "pyproject.toml": "[tool.poetry]\nname = 'x'\n" },
+    paths: ["pyproject.toml", "tests/test_app.py"],
+  });
+  assert.equal(stack.kind, "python");
+  assert.deepEqual(stack.commands, { install: "poetry install", test: "poetry run pytest" });
+});
+
+test("detectStack: python via poetry without tests", () => {
+  const stack = detectStack({
+    files: { "pyproject.toml": "[tool.poetry]\nname = 'x'\n" },
+    paths: ["pyproject.toml", "app.py"],
+  });
+  assert.deepEqual(stack.commands, { install: "poetry install", test: null });
+});
+
+test("detectStack: python via uv.lock uses uv commands", () => {
+  const stack = detectStack({
+    files: { "pyproject.toml": "[project]\nname = 'x'\n" },
+    paths: ["pyproject.toml", "uv.lock", "tests/test_app.py"],
+  });
+  assert.equal(stack.kind, "python");
+  assert.deepEqual(stack.commands, { install: "uv sync", test: "uv run pytest" });
+});
+
+test("detectStack: uv takes precedence over poetry table", () => {
+  const stack = detectStack({
+    files: { "pyproject.toml": "[tool.poetry]\nname = 'x'\n" },
+    paths: ["pyproject.toml", "uv.lock"],
+  });
+  assert.equal(stack.commands.install, "uv sync");
+});
+
+test("detectStack: docker flag annotates a node stack without being the only signal", () => {
+  const stack = detectStack({
+    files: { "package.json": "{}" },
+    paths: ["package.json", "Dockerfile"],
+  });
+  assert.equal(stack.kind, "node");
+  assert.equal(stack.docker, true);
+});
+
+test("detectStack: docker-compose flags docker on a python stack", () => {
+  const stack = detectStack({
+    files: { "requirements.txt": "flask\n" },
+    paths: ["requirements.txt", "docker-compose.yml"],
+  });
+  assert.equal(stack.kind, "python");
+  assert.equal(stack.docker, true);
+});
+
+test("detectStack: Dockerfile alone (no app) stays unknown but flagged docker", () => {
+  const stack = detectStack({ paths: ["Dockerfile"] });
+  assert.equal(stack.kind, "unknown");
+  assert.equal(stack.docker, true);
+});
+
 test("detectStack: unknown when nothing recognizable", () => {
   const stack = detectStack({ files: { "README.md": "# hi" }, paths: ["README.md"] });
   assert.equal(stack.kind, "unknown");
