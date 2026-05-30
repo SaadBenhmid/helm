@@ -49,7 +49,23 @@ if (cmd === "init") {
     const srcTpl = join(PKG_ROOT, "templates", mem);
     if (!existsSync(dst) && existsSync(srcTpl)) copyFileSync(srcTpl, dst);
   }
-  console.log(`Helm initialized (${projectType} project): .helm/ created, skills + CLAUDE.md installed.`);
+  // Autopilot: install the memory hooks now so context survives auto-compaction with
+  // zero user action. Skip (don't clobber) if existing settings.json is malformed.
+  let settings = {};
+  let settingsOk = true;
+  if (existsSync(SETTINGS_PATH)) {
+    try {
+      settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf8"));
+    } catch {
+      settingsOk = false;
+      console.warn(".claude/settings.json is invalid JSON — skipping hook install. Run `helm hooks install` after fixing it.");
+    }
+  }
+  if (settingsOk) {
+    mkdirSync(".claude", { recursive: true });
+    writeFileSync(SETTINGS_PATH, JSON.stringify(mergeHooks(settings), null, 2) + "\n");
+  }
+  console.log(`Helm initialized (${projectType} project): .helm/ + memory hooks installed, skills + CLAUDE.md ready.`);
 } else if (cmd === "status" || cmd === "next") {
   ensureInit();
   const state = readState(STATE_PATH);

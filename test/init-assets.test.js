@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, existsSync } from "node:fs";
+import { mkdtempSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -20,6 +20,14 @@ test("init installs bundled assets into the current project", () => {
   assert.ok(existsSync(join(dir, "templates", "PRD.md")), "PRD template");
   assert.ok(existsSync(join(dir, "bin", "helm.js")), "local runtime bin");
   assert.ok(existsSync(join(dir, "src", "router.js")), "local runtime src");
+});
+
+test("init auto-installs memory hooks (autopilot on by default)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-npx-"));
+  execFileSync("node", [join(REPO, "bin", "helm.js"), "init"], { cwd: dir });
+  const settings = JSON.parse(readFileSync(join(dir, ".claude", "settings.json"), "utf8"));
+  assert.ok(settings.hooks.SessionStart[0].hooks[0].command.includes("inject"));
+  assert.ok(settings.hooks.PreCompact[0].hooks[0].command.includes("capture"));
 });
 
 test("init is idempotent (safe to run twice)", () => {
