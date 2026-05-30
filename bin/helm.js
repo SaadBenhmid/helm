@@ -17,6 +17,7 @@ import { loadRegistry, scoreFrameworks, isStale } from "../src/frameworks.js";
 import { ensureGitignored, kimiEnvExample, KIMI_LAUNCHER_PS1, KIMI_LAUNCHER_SH } from "../src/models.js";
 import { emptyStore, loadTelemetry, addEvent, summarize, DEFAULT_RATES } from "../src/telemetry.js";
 import { parseGoals } from "../src/goals.js";
+import { parseIssues } from "../src/board.js";
 import { detectStack, verifyPlan, interpretResult } from "../src/verify.js";
 import { VERSION } from "../src/version.js";
 
@@ -186,7 +187,10 @@ function gatherProject() {
   const telemetry = loadTelemetrySummary();
   const goals = loadGoals();
   const verify = loadVerify();
-  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")), telemetry, goals, verify };
+  const issues = parseIssues(artifacts["ISSUES.md"] || "");
+  const decisions = artifacts["DECISIONS.md"] || "";
+  const learnings = artifacts["LEARNINGS.md"] || "";
+  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")), telemetry, goals, verify, issues, decisions, learnings };
 }
 
 const cmd = process.argv[2];
@@ -311,6 +315,9 @@ if (cmd === "init") {
       telemetry: g.telemetry,
       goals: g.goals,
       verify: g.verify,
+      issues: g.issues,
+      decisions: g.decisions,
+      learnings: g.learnings,
       live,
     });
   };
