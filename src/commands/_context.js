@@ -31,11 +31,39 @@ export const SETTINGS_PATH = join(".claude", "settings.json");
 // Where Helm's runtime is installed inside a host project: ISOLATED under .helm/
 // so it can never collide with — or, on rollback, wipe — the app's own src/ or bin/.
 export const RUNTIME_DIR = join(HELM_DIR, "runtime");
-// Snapshot/rollback target set ("Helm's core"). It must contain ONLY Helm-owned
-// paths: the isolated runtime, the bundled skills/templates/CLAUDE.md it installs,
-// and config. It MUST NOT contain the host app's top-level src/ or bin/, or a
-// rollback would delete the user's source. (External audit P0.)
-export const CORE_PATHS = [RUNTIME_DIR, "skills", "templates", "CLAUDE.md", CONFIG_PATH];
+// Snapshot/rollback target set ("Helm's core"). This is CONTEXT-AWARE so "snapshot
+// before a core change" backs up the RIGHT runtime in both worlds:
+//   - Developing Helm itself (root package.json name === "helm"): the live runtime
+//     is the tracked top-level src/ + bin/, so snapshot those. (Follow-up audit P1.)
+//   - Helm installed into a host app: the runtime is isolated under .helm/runtime,
+//     and the app's own src/ + bin must NEVER be touched. (Audit P0.)
+// The bundled skills/templates/CLAUDE.md/config are Helm-owned in both cases.
+export function corePaths(root = process.cwd()) {
+  const base = ["skills", "templates", "CLAUDE.md", CONFIG_PATH];
+  return isHelmSourceRepo(root) ? ["src", "bin", ...base] : [RUNTIME_DIR, ...base];
+}
+
+// Is `root` the Helm SOURCE package itself (so root src/bin ARE the live runtime),
+// as opposed to a host app that merely has Helm installed? This gates a
+// safety-critical branch: a false positive would let `rollback` wipe a host app's
+// own src/bin. So we demand the full Helm fingerprint — the package named "helm"
+// AND its actual runtime files present at root — not just the name (a host app
+// could coincidentally be named "helm"). Invocation-independent: it inspects the
+// project tree, not which runner launched us. Any failure → safe "host app" default.
+function isHelmSourceRepo(root) {
+  try {
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    if (!pkg || pkg.name !== "helm") return false;
+  } catch {
+    return false;
+  }
+  return (
+    existsSync(join(root, "bin", "helm.js")) &&
+    existsSync(join(root, "src", "router.js")) &&
+    existsSync(join(root, "src", "snapshot.js")) &&
+    existsSync(join(root, "src", "commands", "_context.js"))
+  );
+}
 
 export function ensureInit() {
   if (!existsSync(STATE_PATH)) {
