@@ -128,7 +128,7 @@ docs/superpowers/
   plans/  ...-helm-foundation.md   # this v1 implementation plan
 ```
 
-At runtime, Helm creates a `.helm/` folder in your project (git-ignored) holding your live `state.json`, `helm.config.json`, snapshots, and the working docs above.
+The tree above is the Helm **package** layout. When you install Helm into a project, the runtime (and a full mirror of `templates/`/`skills/`) is isolated under **`.helm/runtime/`** — Helm never creates a top-level `templates/` in your app, so it can't collide with a Django/Rails/Flask `templates/` dir. Only `CLAUDE.md` and `skills/` are placed at the project root (for the agent to read). At runtime, Helm keeps everything else in a git-ignored `.helm/` folder: your live `state.json`, `helm.config.json`, snapshots, and the working docs.
 
 ---
 

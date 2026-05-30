@@ -8,9 +8,9 @@ export function frameworks(argv) {
   const regPath = join(HELM_DIR, "frameworks.json");
   const src = existsSync(regPath) ? regPath : join(PKG_ROOT, "templates", "frameworks.json");
   if (!existsSync(src)) {
-    // The isolated runtime (.helm/runtime) ships only bin/src/package.json — not
-    // templates — so the seeded copy in .helm/ is the only registry. If it's gone,
-    // a re-init from the full package restores it.
+    // Primary registry is the seeded .helm/frameworks.json; the runtime mirror's
+    // copy (.helm/runtime/templates/frameworks.json) is the fallback. If neither is
+    // present, a re-init from the package restores it.
     console.error("Framework registry not found (.helm/frameworks.json). Restore it with: npx github:SaadBenhmid/helm init");
     process.exit(1);
   }

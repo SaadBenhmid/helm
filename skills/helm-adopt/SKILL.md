@@ -12,7 +12,7 @@ safe and respect what's already there. Change nothing in this phase except `.hel
 1. **Map the codebase.** Use subagents to explore so the main window stays lean. Identify:
    stack & languages, entry points, folder structure, key modules, data model, external
    services, build/test/run commands.
-2. **Write `.helm/CODEBASE.md`** from `templates/CODEBASE.md`: stack, architecture, the
+2. **Write `.helm/CODEBASE.md`** from `.helm/runtime/templates/CODEBASE.md`: stack, architecture, the
    existing **patterns/conventions** to follow, build/test commands, and risky areas.
 3. **Install + build the code index (Serena)** so later sessions navigate by symbol instead of
    re-reading files. Note the re-index command in `CODEBASE.md`.

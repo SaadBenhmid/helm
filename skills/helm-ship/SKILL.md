@@ -8,7 +8,7 @@ description: Helm Phase 5 — run the production-readiness checklist with loud g
 Goal: a real, deployable production SaaS — not a demo.
 
 ## Steps
-1. Copy `templates/SHIP.md` to `.helm/SHIP.md` if absent.
+1. Copy `.helm/runtime/templates/SHIP.md` to `.helm/SHIP.md` if absent.
 2. Work the checklist. **Loud gates** (hard to skip) on the 3 killers:
    - 🔑 **Secrets** — *enforced by code*: run `node .helm/runtime/bin/helm.js security`. It scans for
      leaked credentials (AWS/Stripe/OpenAI/Anthropic/GitHub/GCP keys, private keys, DB

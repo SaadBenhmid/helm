@@ -11,3 +11,4 @@ helm-dashboard.html
 
 .demo/
 _commitmsg.txt
+.claude/settings.json
