@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { lintMemory } from "../lint.js";
-import { ensureInit, HELM_DIR, STATE_PATH } from "./_context.js";
+import { ensureInit, HELM_DIR, STATE_PATH, PHASE_ARTIFACT } from "./_context.js";
 
 export function lint() {
   ensureInit();
@@ -15,7 +15,19 @@ export function lint() {
     }
   });
   const stateText = existsSync(STATE_PATH) ? readFileSync(STATE_PATH, "utf8") : null;
-  const findings = lintMemory({ stateText, present });
+  // Load each phase artifact's content (if present) so lint can verify durable memory.
+  const artifacts = {};
+  for (const file of new Set(Object.values(PHASE_ARTIFACT))) {
+    const p = join(HELM_DIR, file);
+    if (existsSync(p)) {
+      try {
+        artifacts[file] = readFileSync(p, "utf8");
+      } catch {
+        /* unreadable → treated as absent */
+      }
+    }
+  }
+  const findings = lintMemory({ stateText, present, phaseArtifact: PHASE_ARTIFACT, artifacts });
   if (findings.length === 0) {
     console.log("Memory looks healthy. ✅");
   } else {

@@ -19,7 +19,7 @@ safe and respect what's already there. Change nothing in this phase except `.hel
 4. **Seed memory:** record the inferred stack/architecture choices in `.helm/DECISIONS.md`, and
    log any obvious tech-debt / risks in `.helm/ISSUES.md`.
 5. **Set the model role slots** in `.helm/helm.config.json` (plan / build / review). Confirm.
-6. When the user confirms the map looks right, run `node bin/helm.js advance` to move to the
+6. When the user confirms the map looks right, run `node .helm/runtime/bin/helm.js advance` to move to the
    first milestone's PRD.
 
 ## Rules

@@ -1,6 +1,7 @@
 import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { detectStack, verifyPlan, interpretResult } from "../verify.js";
+import { detectStack, verifyPlan, interpretResult, verifyCwd } from "../verify.js";
 import { ensureInit, collectRepo, logEvent, VERIFY_PATH } from "./_context.js";
 
 export function verify() {
@@ -25,6 +26,17 @@ export function verify() {
     console.log("Verify: no recognised stack (node/static/python) — nothing to run. ✅");
   } else {
     const plan = verifyPlan(stack);
+    // Run commands in the package we actually detected. For a nested monorepo app
+    // (stack.target = "apps/web") that's the sub-package, NOT the repo root. (P1a)
+    const runCwd = resolve(verifyCwd(stack, process.cwd()));
+    // EXECUTION BOUNDARY (not a safety boundary): verify runs THIS project's own
+    // install/build/test scripts in a real shell. The allowlist only constrains
+    // which package-manager verbs may run — it does not sandbox what those scripts
+    // do. Only verify code you trust. (External audit P1b.)
+    if (plan.some((s) => s.cmd)) {
+      console.log("⚠ verify runs this project's own install/build/test scripts (execution boundary, not a sandbox).");
+    }
+    if (stack.target) console.log(`Verifying nested package: ${stack.target}`);
     const checks = [];
     for (const step of plan) {
       if (!step.cmd) {
@@ -43,7 +55,7 @@ export function verify() {
         console.log(`✕ ${step.name} — refused (not an allowlisted command): ${step.cmd}`);
         continue;
       }
-      const r = spawnSync(step.cmd, { shell: true, encoding: "utf8", timeout: 120000 });
+      const r = spawnSync(step.cmd, { shell: true, cwd: runCwd, encoding: "utf8", timeout: 120000 });
       // Timeout detection: spawnSync's timeout doesn't reliably surface
       // error.code === "ETIMEDOUT" on every platform — when the child is killed
       // for exceeding the limit, status is null and signal is set (e.g. SIGTERM).

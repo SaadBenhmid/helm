@@ -17,7 +17,7 @@ AI coding agent can execute it without guessing.
    - **Machine-verifiable acceptance criteria** (quantified, checkbox-style) per feature.
    - Break scope into phases of ~30–50 requirements; each item has a testable "done".
 3. Record key tech/infra decisions in `.helm/DECISIONS.md`.
-4. When the user approves the PRD, run `node bin/helm.js advance` to move to Mockup.
+4. When the user approves the PRD, run `node .helm/runtime/bin/helm.js advance` to move to Mockup.
 
 ## Rules
 - No vague criteria ("fast", "intuitive"). Quantify everything.

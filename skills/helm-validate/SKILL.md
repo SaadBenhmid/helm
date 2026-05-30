@@ -20,7 +20,7 @@ before any PRD or code.
    - A go / pivot / kill threshold — **set before judging**.
 4. Record the decision + rationale in `.helm/VALIDATION.md`.
 5. Log the decision in `.helm/DECISIONS.md`.
-6. When the user confirms the decision, run `node bin/helm.js advance` to move to
+6. When the user confirms the decision, run `node .helm/runtime/bin/helm.js advance` to move to
    the PRD phase.
 
 ## Rules

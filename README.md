@@ -37,7 +37,7 @@ npx github:SaadBenhmid/helm init
 
 That installs Helm's brain, runtime, phase skills, and `CLAUDE.md` into the folder and creates
 the `.helm/` memory directory. Then open the folder in **Claude Code** (or any AI agent) and just
-talk — Claude runs every Helm command for you (locally, via `node bin/helm.js …`), and the only
+talk — Claude runs every Helm command for you (locally, via `node .helm/runtime/bin/helm.js …`), and the only
 thing it asks is for you to **confirm moving between phases**.
 
 Behind the scenes Claude runs `helm status`, which prints something like:
@@ -66,26 +66,26 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | Command | What it does |
 |---------|--------------|
 | `npx github:SaadBenhmid/helm init` | One-time: install Helm (runtime + skills + CLAUDE.md) into the current project and create `.helm/`. |
-| `node bin/helm.js status` | Show current phase, status, and the next action. (alias: `next`) |
-| `node bin/helm.js advance` | Mark the current phase complete and move to the next one. |
-| `node bin/helm.js snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
+| `node .helm/runtime/bin/helm.js status` | Show current phase, status, and the next action. (alias: `next`) |
+| `node .helm/runtime/bin/helm.js advance` | Mark the current phase complete and move to the next one. |
+| `node .helm/runtime/bin/helm.js snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
 | `npx github:SaadBenhmid/helm init --existing` | One-time: adopt an **existing** codebase (starts at the Adopt phase). |
-| `node bin/helm.js milestone` | Start the next feature/fix milestone (loops back to a fresh PRD). |
-| `node bin/helm.js hooks install` | Wire Claude Code hooks so memory is captured automatically. |
-| `node bin/helm.js models init` | Scaffold git-ignored `.env.helm` + launcher scripts for the Kimi build model. |
-| `node bin/helm.js lint` | Health-check `.helm/` memory (missing logs, stale/out-of-order state). |
-| `node bin/helm.js security` | Scan for leaked secrets / insecure config; blocks `ship` until clean (override: `advance --force`). |
-| `node bin/helm.js score` | Print the project scorecard — process-health grade vs the promise (honest about what's unproven). |
-| `node bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard, tokens, goals + artifacts. |
-| `node bin/helm.js dashboard --serve [port]` | Serve the dashboard live (default port `4317`), regenerated from `.helm` state on every request (auto-refreshes). |
-| `node bin/helm.js track --model M --in N --out N [--phase P] [--note ...]` | Record a token/credit usage event; prints running totals + USD cost. |
-| `node bin/helm.js verify` | Auto-detect the app's stack (node/static/python) and run install→build→test, recording pass/fail to `.helm/verify.json`. |
-| `node bin/helm.js frameworks [--size --rigor --ui --team]` | Recommend the best-fit AI-workflow framework from a refreshable registry (ranked, with rationale). |
-| `node bin/helm.js version` | Print the installed Helm version. |
-| `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
+| `node .helm/runtime/bin/helm.js milestone` | Start the next feature/fix milestone (loops back to a fresh PRD). |
+| `node .helm/runtime/bin/helm.js hooks install` | Wire Claude Code hooks so memory is captured automatically. |
+| `node .helm/runtime/bin/helm.js models init` | Scaffold git-ignored `.env.helm` + launcher scripts for the Kimi build model. |
+| `node .helm/runtime/bin/helm.js lint` | Health-check `.helm/` memory (missing logs, stale/out-of-order state). |
+| `node .helm/runtime/bin/helm.js security` | Scan for leaked secrets / insecure config; blocks `ship` until clean (override: `advance --force`). |
+| `node .helm/runtime/bin/helm.js score` | Print the project scorecard — process-health grade vs the promise (honest about what's unproven). |
+| `node .helm/runtime/bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard, tokens, goals + artifacts. |
+| `node .helm/runtime/bin/helm.js dashboard --serve [port]` | Serve the dashboard live (default port `4317`), regenerated from `.helm` state on every request (auto-refreshes). |
+| `node .helm/runtime/bin/helm.js track --model M --in N --out N [--phase P] [--note ...]` | Record a token/credit usage event; prints running totals + USD cost. |
+| `node .helm/runtime/bin/helm.js verify` | Auto-detect the app's stack (node/static/python) and run install→build→test, recording pass/fail to `.helm/verify.json`. ⚠️ This is an **execution boundary, not a sandbox**: it runs the project's own scripts in a real shell (the allowlist limits which package-manager verbs run, not what they do). Only verify code you trust. |
+| `node .helm/runtime/bin/helm.js frameworks [--size --rigor --ui --team]` | Recommend the best-fit AI-workflow framework from a refreshable registry (ranked, with rationale). |
+| `node .helm/runtime/bin/helm.js version` | Print the installed Helm version. |
+| `node .helm/runtime/bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
 > **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime
-> lives locally so the AI runs everything with `node bin/helm.js …` and only asks you to confirm
+> lives locally so the AI runs everything with `node .helm/runtime/bin/helm.js …` and only asks you to confirm
 > phase transitions.
 
 ---

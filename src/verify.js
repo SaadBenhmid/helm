@@ -200,6 +200,16 @@ export function verifyPlan(stack = {}) {
   return plan;
 }
 
+// Decide which directory verify should run its commands in. When detectStack
+// selected a NESTED package (monorepo apps/web, packages/*), `stack.target` is
+// that package's path and commands must run there — running `npm install`/`build`
+// at the repo root would verify the wrong (or no) app. Otherwise use the root.
+export function verifyCwd(stack = {}, root = ".") {
+  const target = stack && stack.target;
+  if (!target) return root;
+  return root === "." ? target : `${root}/${target}`;
+}
+
 // Interpret a single command's outcome into a clean pass/fail with a human detail.
 // A step is ok only when it didn't time out and exited 0.
 export function interpretResult({ name, exitCode, stdout = "", stderr = "", timedOut = false } = {}) {

@@ -11,7 +11,7 @@ export function inject() {
       const state = readState(STATE_PATH);
       console.log(renderStateMd(state, nextAction(state)));
     } else {
-      console.log("Helm is present but not initialized. Run: node bin/helm.js init");
+      console.log("Helm is present but not initialized. Run: node .helm/runtime/bin/helm.js init");
     }
   } catch {
     /* never block a session on a hook error */

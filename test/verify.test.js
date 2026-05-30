@@ -1,6 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { detectStack, verifyPlan, interpretResult } from "../src/verify.js";
+import { detectStack, verifyPlan, interpretResult, verifyCwd } from "../src/verify.js";
+
+// P1a (external audit): when detectStack picks a NESTED package (monorepo apps/web,
+// packages/*), verify must run its commands IN that package dir — not the repo root.
+test("verifyCwd: repo root when there is no nested target", () => {
+  assert.equal(verifyCwd({ kind: "node", commands: {} }, "/proj"), "/proj");
+});
+
+test("verifyCwd: the nested package dir when a target is set", () => {
+  const cwd = verifyCwd({ kind: "node", target: "apps/web", commands: {} }, "/proj");
+  assert.equal(cwd.replace(/\\/g, "/"), "/proj/apps/web");
+});
+
+test("verifyCwd: defaults root to '.' and ignores a falsy target", () => {
+  assert.equal(verifyCwd({ kind: "node", commands: {} }), ".");
+  assert.equal(verifyCwd({ kind: "python", target: "", commands: {} }, "."), ".");
+});
 
 test("detectStack: node package.json with test + build scripts", () => {
   const pkg = JSON.stringify({ scripts: { build: "tsc", test: "jest", start: "node ." } });

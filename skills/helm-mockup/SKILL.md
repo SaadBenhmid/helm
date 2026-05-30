@@ -17,7 +17,7 @@ consistent, reusable design system.
 4. **User confirms the template matches the mockup.**
 5. Write `.helm/DESIGN.md` from `templates/DESIGN.md`: colors, typography, spacing,
    component rules, tone/voice. Every later coding step reads this so the UI never drifts.
-6. Run `node bin/helm.js advance` to move to Setup.
+6. Run `node .helm/runtime/bin/helm.js advance` to move to Setup.
 
 ## Rules
 - Do not proceed until BOTH confirmations are given.
