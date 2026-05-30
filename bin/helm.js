@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, mkdirSync, copyFileSync, cpSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, copyFileSync, cpSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { readState, writeState, defaultState, advanceState, startMilestone } from "../src/state.js";
 import { nextAction } from "../src/router.js";
 import { renderStateMd, renderHandoff } from "../src/render.js";
 import { snapshot, rollback } from "../src/snapshot.js";
 import { mergeHooks } from "../src/hooks.js";
+import { lintMemory } from "../src/lint.js";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const HELM_DIR = ".helm";
@@ -41,6 +42,12 @@ if (cmd === "init") {
   const projectType = process.argv.includes("--existing") ? "existing" : "new";
   if (!existsSync(STATE_PATH)) writeState(STATE_PATH, defaultState(projectType));
   if (!existsSync(CONFIG_PATH)) copyFileSync(join(PKG_ROOT, "templates", "helm.config.json"), CONFIG_PATH);
+  // Seed the append-only memory logs so memory exists from the very first phase.
+  for (const mem of ["DECISIONS.md", "ISSUES.md", "LEARNINGS.md"]) {
+    const dst = join(HELM_DIR, mem);
+    const srcTpl = join(PKG_ROOT, "templates", mem);
+    if (!existsSync(dst) && existsSync(srcTpl)) copyFileSync(srcTpl, dst);
+  }
   console.log(`Helm initialized (${projectType} project): .helm/ created, skills + CLAUDE.md installed.`);
 } else if (cmd === "status" || cmd === "next") {
   ensureInit();
@@ -97,6 +104,17 @@ if (cmd === "init") {
   } catch {
     /* never block a session on a hook error */
   }
+} else if (cmd === "lint") {
+  ensureInit();
+  const present = readdirSync(HELM_DIR).filter((f) => statSync(join(HELM_DIR, f)).isFile());
+  const stateText = existsSync(STATE_PATH) ? readFileSync(STATE_PATH, "utf8") : null;
+  const findings = lintMemory({ stateText, present });
+  if (findings.length === 0) {
+    console.log("Memory looks healthy. ✅");
+  } else {
+    for (const f of findings) console.log(`${f.level === "error" ? "✖ ERROR" : "⚠ WARN"}  ${f.msg}`);
+  }
+  if (findings.some((f) => f.level === "error")) process.exit(1);
 } else if (cmd === "snapshot") {
   ensureInit();
   const id = snapshot(".", CORE_PATHS, SNAP_ROOT, process.argv[3] || "manual");
@@ -106,5 +124,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init [--existing]|status|next|advance|milestone|hooks install|inject|capture|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init [--existing]|status|next|advance|milestone|hooks install|inject|capture|lint|snapshot [label]|rollback [id]>");
 }
