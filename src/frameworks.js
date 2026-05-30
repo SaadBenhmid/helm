@@ -9,6 +9,9 @@
 const RATE = { best: 2, ok: 1, poor: -1 };   // fit ratings → points
 const LEVEL = { low: 0, medium: 1, high: 2 }; // ordinal levels for rigor / ui
 
+const RATINGS = new Set(["best", "ok", "poor"]);
+const LEVELS = new Set(["low", "medium", "high"]);
+
 export function validateRegistry(reg) {
   if (!reg || typeof reg !== "object") throw new Error("registry must be an object");
   if (!Array.isArray(reg.frameworks) || reg.frameworks.length === 0) {
@@ -16,7 +19,18 @@ export function validateRegistry(reg) {
   }
   for (const fw of reg.frameworks) {
     if (!fw || !fw.id || !fw.name) throw new Error("each framework needs an id and name");
-    if (!fw.fit || typeof fw.fit !== "object") throw new Error(`framework "${fw.id}" is missing fit signals`);
+    const fit = fw.fit;
+    if (!fit || typeof fit !== "object") throw new Error(`framework "${fw.id}" is missing fit signals`);
+    // Validate the fit shape so a hand- or agent-edited registry fails loudly, not silently mis-scores.
+    for (const dim of ["size", "team"]) {
+      if (!fit[dim] || typeof fit[dim] !== "object") throw new Error(`framework "${fw.id}" fit.${dim} must be an object of ratings`);
+      for (const [k, v] of Object.entries(fit[dim])) {
+        if (!RATINGS.has(v)) throw new Error(`framework "${fw.id}" fit.${dim}.${k} must be best|ok|poor (got "${v}")`);
+      }
+    }
+    for (const dim of ["rigor", "ui"]) {
+      if (!LEVELS.has(fit[dim])) throw new Error(`framework "${fw.id}" fit.${dim} must be low|medium|high (got "${fit[dim]}")`);
+    }
   }
   return true;
 }

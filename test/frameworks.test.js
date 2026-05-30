@@ -20,6 +20,18 @@ test("validateRegistry rejects malformed registries", () => {
   assert.throws(() => validateRegistry({ frameworks: [{ id: "x" }] })); // missing name/fit
 });
 
+test("validateRegistry rejects bad fit shapes (guards agent rewrites)", () => {
+  const base = { id: "x", name: "X" };
+  const goodFit = { size: { small: "best" }, team: { solo: "ok" }, rigor: "high", ui: "low" };
+  assert.doesNotThrow(() => validateRegistry({ frameworks: [{ ...base, fit: goodFit }] }));
+  // invalid rating
+  assert.throws(() => validateRegistry({ frameworks: [{ ...base, fit: { ...goodFit, size: { small: "amazing" } } }] }));
+  // invalid level
+  assert.throws(() => validateRegistry({ frameworks: [{ ...base, fit: { ...goodFit, rigor: "extreme" } }] }));
+  // missing dimension
+  assert.throws(() => validateRegistry({ frameworks: [{ ...base, fit: { size: { small: "best" }, team: { solo: "ok" }, ui: "low" } }] }));
+});
+
 test("scoreFrameworks ranks a large, high-rigor, team project toward heavyweight frameworks", () => {
   const ranked = scoreFrameworks(REGISTRY, { size: "large", rigor: "high", ui: "low", team: "team" });
   const top3 = ranked.slice(0, 3).map((r) => r.id);
