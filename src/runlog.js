@@ -41,7 +41,7 @@ export function summarizeRun(events) {
   let overrides = 0;
   let verifyRuns = 0;
   let verifyPassed = 0;
-  let usd = 0;
+  let usdMicro = 0; // accumulate in integer micro-dollars to avoid float drift
   for (const e of list) {
     const t = e && e.type ? e.type : "unknown";
     byType[t] = (byType[t] || 0) + 1;
@@ -53,9 +53,10 @@ export function summarizeRun(events) {
       if (e.passed === true) verifyPassed++;
     } else if (t === "tokens") {
       const v = Number(e.usd);
-      if (Number.isFinite(v)) usd += v;
+      if (Number.isFinite(v)) usdMicro += Math.round(v * 1e6);
     }
   }
+  const usd = usdMicro / 1e6;
   const first = list.length ? list[0].ts || null : null;
   const last = list.length ? list[list.length - 1].ts || null : null;
   return { total: list.length, byType, advances, blocks, overrides, verifyRuns, verifyPassed, usd, first, last };

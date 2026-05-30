@@ -527,7 +527,7 @@ function renderTimeline(runlog) {
       const when = escapeHtml(String(e.ts || "").replace("T", " ").replace(/\..*$/, ""));
       return `
       <li class="rl-row">
-        <span class="rl-glyph ${cls}" aria-hidden="true">${escapeHtml(m.glyph)}</span>
+        <span class="rl-glyph ${escapeHtml(cls)}" aria-hidden="true">${escapeHtml(m.glyph)}</span>
         <span class="rl-when mono">${when}</span>
         <span class="rl-text">${escapeHtml(m.word(e))}</span>
       </li>`;
