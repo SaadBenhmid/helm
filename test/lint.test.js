@@ -48,6 +48,48 @@ test("a phase completed out of order is flagged", () => {
   assert.ok(f.some((x) => /comes after the current phase/.test(x.msg)));
 });
 
+// P2 (external audit): artifacts are Helm's durable memory, so lint must warn when
+// a completed (or in-progress current) artifact-bearing phase has no real artifact.
+const PA = { validate: "VALIDATION.md", prd: "PRD.md", mockup: "DESIGN.md", adopt: "CODEBASE.md", ship: "SHIP.md" };
+const realDoc = "# Validation\n" + "x".repeat(150);
+
+test("lint warns when a completed artifact-bearing phase has no real artifact", () => {
+  const f = lintMemory({
+    stateText: goodState, // validate complete, prd complete, build in_progress
+    present: ["state.json", "DECISIONS.md", "ISSUES.md", "handoff.md"],
+    phaseArtifact: PA,
+    artifacts: {}, // no artifacts on disk
+  });
+  assert.ok(f.some((x) => x.level === "warn" && /VALIDATION\.md/.test(x.msg)), "should flag missing VALIDATION.md");
+  assert.ok(f.some((x) => x.level === "warn" && /PRD\.md/.test(x.msg)), "should flag missing PRD.md");
+});
+
+test("lint does NOT warn when the artifacts are real", () => {
+  const f = lintMemory({
+    stateText: goodState,
+    present: ["state.json", "DECISIONS.md", "ISSUES.md", "handoff.md"],
+    phaseArtifact: PA,
+    artifacts: { "VALIDATION.md": realDoc, "PRD.md": realDoc },
+  });
+  assert.ok(!f.some((x) => /VALIDATION\.md|PRD\.md/.test(x.msg)), "no artifact warnings when real");
+});
+
+test("lint does NOT warn about a not_started current phase's artifact", () => {
+  const state = JSON.stringify({
+    projectType: "new",
+    currentPhase: "prd",
+    phaseStatus: "not_started",
+    phases: { validate: "complete", prd: "not_started" },
+  });
+  const f = lintMemory({
+    stateText: state,
+    present: ["state.json", "DECISIONS.md", "ISSUES.md", "handoff.md"],
+    phaseArtifact: PA,
+    artifacts: { "VALIDATION.md": realDoc }, // validate done; prd not started yet
+  });
+  assert.ok(!f.some((x) => /PRD\.md/.test(x.msg)), "must not nag about an unstarted phase's artifact");
+});
+
 test("CLI: lint reports healthy after a fresh init + capture", () => {
   const dir = mkdtempSync(join(tmpdir(), "helm-lint-"));
   execFileSync("node", [join(REPO, "bin", "helm.js"), "init"], { cwd: dir });

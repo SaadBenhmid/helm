@@ -1,24 +1,26 @@
-fix(P0): isolate Helm runtime under .helm/runtime so it can't pollute or wipe the host app
+fix(P1a/P1b/P2): nested-app verify cwd, verify execution-boundary notice, lint artifact gap
 
-External audit (ChatGPT) flagged the biggest product risk: `helm init` copied
-Helm's runtime into the project's top-level src/ and bin/, and CORE_PATHS
-(the snapshot/rollback target set) included "src"/"bin" — so installing Helm
-into an existing app polluted its source tree and a rollback could DELETE the
-user's own files under src/.
+Addresses the remaining three findings from the external audit (ChatGPT).
 
-Fix — runtime isolation:
-- init now installs the runtime (bin, src, package.json) under .helm/runtime/,
-  never the app root. Project-facing assets (skills, templates, CLAUDE.md) still
-  install at root where Claude Code/the user expect them (force:false, never
-  clobbers app files).
-- CORE_PATHS drops "src"/"bin" and targets .helm/runtime instead, so snapshot/
-  rollback only ever touch Helm-owned paths — never the host app's source.
-- hooks runner + all bundled guidance (CLAUDE.md, AGENTS.md, README, USAGE,
-  skills) now invoke `node .helm/runtime/bin/helm.js`.
+P1a — verify runs in the detected package's directory:
+  detectStack surfaces `target` for a nested monorepo app (apps/web, packages/*),
+  but `helm verify` ran install/build/test from the repo root, verifying the wrong
+  (or no) app. New pure `verifyCwd(stack, root)` resolves the run dir; the command
+  now spawns each step with `cwd` set to that package. Logs the nested target.
 
-Tests: test/runtime-isolation.test.js proves CORE_PATHS excludes src/bin, init
-isolates the runtime, init never clobbers a pre-existing app src/ file, and a
-snapshot+rollback cycle restores the runtime while leaving app src/ untouched.
-256/256 passing.
+P1b — verify is labelled an execution boundary, not a safety boundary:
+  verify runs the project's OWN install/build/test scripts in a real shell; the
+  allowlist only limits which package-manager verbs run, not what they do. Added a
+  one-line CLI notice before execution and a README warning. Only verify trusted code.
+
+P2 — lint flags missing phase artifacts:
+  artifacts are Helm's durable memory, but lint only checked memory logs/order and
+  reported "healthy" even when a completed phase never wrote its artifact. lintMemory
+  now takes phaseArtifact + artifacts and warns when a completed (or in-progress
+  current) artifact-bearing phase lacks a real (non-stub) artifact. A not_started
+  phase is exempt (no false nagging). On this repo, lint now correctly warns that
+  the completed `validate` phase has no VALIDATION.md.
+
+Tests: +3 verifyCwd cases, +3 lint artifact cases. 262/262 passing.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

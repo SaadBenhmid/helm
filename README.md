@@ -79,7 +79,7 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `node .helm/runtime/bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard, tokens, goals + artifacts. |
 | `node .helm/runtime/bin/helm.js dashboard --serve [port]` | Serve the dashboard live (default port `4317`), regenerated from `.helm` state on every request (auto-refreshes). |
 | `node .helm/runtime/bin/helm.js track --model M --in N --out N [--phase P] [--note ...]` | Record a token/credit usage event; prints running totals + USD cost. |
-| `node .helm/runtime/bin/helm.js verify` | Auto-detect the app's stack (node/static/python) and run install→build→test, recording pass/fail to `.helm/verify.json`. |
+| `node .helm/runtime/bin/helm.js verify` | Auto-detect the app's stack (node/static/python) and run install→build→test, recording pass/fail to `.helm/verify.json`. ⚠️ This is an **execution boundary, not a sandbox**: it runs the project's own scripts in a real shell (the allowlist limits which package-manager verbs run, not what they do). Only verify code you trust. |
 | `node .helm/runtime/bin/helm.js frameworks [--size --rigor --ui --team]` | Recommend the best-fit AI-workflow framework from a refreshable registry (ranked, with rationale). |
 | `node .helm/runtime/bin/helm.js version` | Print the installed Helm version. |
 | `node .helm/runtime/bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
