@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const cases = [
+  ["skills/helm-adopt/SKILL.md", /name:\s*helm-adopt/, /CODEBASE\.md/],
   ["skills/helm-prd/SKILL.md", /name:\s*helm-prd/, /PRD\.md/],
   ["skills/helm-mockup/SKILL.md", /name:\s*helm-mockup/, /DESIGN\.md/],
   ["skills/helm-setup/SKILL.md", /name:\s*helm-setup/, /serena/i],

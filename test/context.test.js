@@ -18,6 +18,7 @@ test("bootstrap rehydrates cheaply and clears between phases", () => {
 });
 
 const phaseSkills = [
+  "skills/helm-adopt/SKILL.md",
   "skills/helm-validate/SKILL.md",
   "skills/helm-prd/SKILL.md",
   "skills/helm-mockup/SKILL.md",
