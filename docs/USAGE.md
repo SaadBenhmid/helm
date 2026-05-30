@@ -12,7 +12,7 @@ The example user is a **non-coder**. The SaaS idea: **"InvoiceSnap" — dead-sim
 > 🔁 **Already have a codebase?** Run `npx github:SaadBenhmid/helm init --existing` instead.
 > Claude starts with the **Adopt** phase — it maps your code into `.helm/CODEBASE.md` (read-only,
 > no changes) so it understands the project, then works in **milestones**: each feature/fix goes
-> PRD → Build → Ship, and `node bin/helm.js milestone` starts the next one. Brownfield guardrails
+> PRD → Build → Ship, and `node .helm/runtime/bin/helm.js milestone` starts the next one. Brownfield guardrails
 > keep it from touching or reformatting unrelated code.
 
 ## 0. Set up a new project folder
@@ -31,13 +31,13 @@ git init
 
 That's it. `npx github:SaadBenhmid/helm init` drops in the brain + runtime, the phase skills,
 and creates the `.helm/` memory folder. Now open this folder in **Claude Code** (or your AI
-agent of choice) — from here on, Claude runs the commands (locally via `node bin/helm.js …`);
+agent of choice) — from here on, Claude runs the commands (locally via `node .helm/runtime/bin/helm.js …`);
 you just chat and confirm.
 
-> 🪝 On first run Claude also runs `node bin/helm.js hooks install`, which wires Claude Code
+> 🪝 On first run Claude also runs `node .helm/runtime/bin/helm.js hooks install`, which wires Claude Code
 > hooks so your **context + memory are captured automatically** — state is re-injected at the
 > start of every session, and a handoff is written when a session ends or the window compacts.
-> You never manage this; if anything ever looks off, Claude can run `node bin/helm.js lint`.
+> You never manage this; if anything ever looks off, Claude can run `node .helm/runtime/bin/helm.js lint`.
 
 ---
 
@@ -46,7 +46,7 @@ you just chat and confirm.
 **You:**
 > hey, i want to build a SaaS. where do we start?
 
-**Claude:** *(reads `CLAUDE.md`, sees it's a Helm project, invokes `helm-bootstrap`, runs `node bin/helm.js status`)*
+**Claude:** *(reads `CLAUDE.md`, sees it's a Helm project, invokes `helm-bootstrap`, runs `node .helm/runtime/bin/helm.js status`)*
 
 > You're on phase **Validate** (not started). 💡
 > Before we build anything, Helm wants to make sure the idea is worth building — a quick market + cost check that ends in a clear **go / pivot / kill**.
@@ -94,7 +94,7 @@ you just chat and confirm.
 > Recorded ✅. Moving to the PRD.
 > 
 > ```
-> node bin/helm.js advance
+> node .helm/runtime/bin/helm.js advance
 > ```
 > You're now on phase **PRD**. 📋
 
@@ -141,7 +141,7 @@ you just chat and confirm.
 
 **Claude:**
 > ```
-> node bin/helm.js advance
+> node .helm/runtime/bin/helm.js advance
 > ```
 > On to the **Mockup**. 🎨
 
@@ -177,7 +177,7 @@ you just chat and confirm.
 **Claude:** *(writes `.helm/DESIGN.md` — colors, fonts, spacing, the green "Paid" rule, tone)*
 > Design identity locked in `.helm/DESIGN.md` ✅ — every screen will follow it automatically.
 > ```
-> node bin/helm.js advance
+> node .helm/runtime/bin/helm.js advance
 > ```
 > Next: **Setup**. 🧱
 
@@ -197,7 +197,7 @@ you just chat and confirm.
 **Claude:** *(sets the slots in `.helm/helm.config.json`, records choices in `.helm/DECISIONS.md`)*
 > Engine configured ✅.
 > ```
-> node bin/helm.js advance
+> node .helm/runtime/bin/helm.js advance
 > ```
 > Time to **build**. 🔁
 
@@ -237,7 +237,7 @@ you just chat and confirm.
 **Claude:** *(finishes slices)*
 > ✅ All build slices done and green.
 > ```
-> node bin/helm.js advance
+> node .helm/runtime/bin/helm.js advance
 > ```
 > Last step: **Ship**. 🚢
 
@@ -266,10 +266,10 @@ you just chat and confirm.
 ## Commands (Claude runs these — you don't have to)
 
 ```powershell
-node bin/helm.js status     # where am I? what's next?
-node bin/helm.js advance    # finish this phase, move to the next (Claude asks you to confirm first)
-node bin/helm.js snapshot   # back up Helm's core before a risky change
-node bin/helm.js rollback   # undo to the last snapshot
+node .helm/runtime/bin/helm.js status     # where am I? what's next?
+node .helm/runtime/bin/helm.js advance    # finish this phase, move to the next (Claude asks you to confirm first)
+node .helm/runtime/bin/helm.js snapshot   # back up Helm's core before a risky change
+node .helm/runtime/bin/helm.js rollback   # undo to the last snapshot
 ```
 
 You never need to type these — Claude runs them automatically. The only moment Claude

@@ -35,7 +35,7 @@ Goal: ship the PRD slice by slice, keeping quality high and tokens low.
 ## Self-evolve (confirm-gated)
 - When you learn a durable lesson, append it to `.helm/LEARNINGS.md` and show the user
   *"Lesson: X / Proposed rule update: Y / Confirm?"* — apply only on confirm. Snapshot Helm
-  core (`node bin/helm.js snapshot`) before any core change.
+  core (`node .helm/runtime/bin/helm.js snapshot`) before any core change.
 
 ## Advancing
-- When the PRD's slices are all built and green, run `node bin/helm.js advance` to move to Ship.
+- When the PRD's slices are all built and green, run `node .helm/runtime/bin/helm.js advance` to move to Ship.

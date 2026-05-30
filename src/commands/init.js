@@ -13,8 +13,8 @@ export function init(argv) {
       "CLAUDE.md",
       "skills/ (bundled skills)",
       "templates/ (bundled templates)",
-      "bin/ (local runtime)",
-      "src/ (local runtime)",
+      ".helm/runtime/bin/ (isolated local runtime)",
+      ".helm/runtime/src/ (isolated local runtime)",
       STATE_PATH,
       CONFIG_PATH,
       join(HELM_DIR, "DECISIONS.md"),
@@ -29,16 +29,29 @@ export function init(argv) {
     console.log("No files written (dry run).");
     process.exit(0);
   }
-  // Install bundled assets from the package into the current project (idempotent).
-  // Includes bin + src so the runtime is local after one bootstrap (no re-download).
-  for (const asset of ["CLAUDE.md", "skills", "templates", "bin", "src"]) {
+  mkdirSync(HELM_DIR, { recursive: true });
+  // Install project-facing assets (skills, templates, CLAUDE.md) at the root where
+  // Claude Code and the user expect them. force:false never clobbers app files.
+  for (const asset of ["CLAUDE.md", "skills", "templates"]) {
     const src = join(PKG_ROOT, asset);
     const dest = resolve(asset);
     if (existsSync(src) && resolve(src) !== dest) {
       cpSync(src, dest, { recursive: true, force: false, errorOnExist: false });
     }
   }
-  mkdirSync(HELM_DIR, { recursive: true });
+  // Install the RUNTIME (bin + src) ISOLATED under .helm/runtime so it can never
+  // collide with the host app's own src/ or bin/, and so rollback (which restores
+  // CORE_PATHS) can never wipe the user's source. (External audit P0.)
+  const runtimeDir = join(HELM_DIR, "runtime");
+  // package.json travels with the runtime so `helm version` (which reads it
+  // relative to the runtime) works from the isolated location.
+  for (const asset of ["bin", "src", "package.json"]) {
+    const src = join(PKG_ROOT, asset);
+    const dest = resolve(join(runtimeDir, asset));
+    if (existsSync(src) && resolve(src) !== dest) {
+      cpSync(src, dest, { recursive: true, force: true, errorOnExist: false });
+    }
+  }
   // Project type: `--existing` (brownfield, starts at Adopt) or default `new` (greenfield).
   const projectType = argv.includes("--existing") ? "existing" : "new";
   if (!existsSync(STATE_PATH)) writeState(STATE_PATH, defaultState(projectType));

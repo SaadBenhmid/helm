@@ -10,7 +10,7 @@ tells you the exact next action. Do not guess the next step — let Helm route y
 
 ## Who runs commands (important)
 
-**You, the AI, run every Helm command yourself** with `node bin/helm.js status|advance|snapshot|rollback`
+**You, the AI, run every Helm command yourself** with `node .helm/runtime/bin/helm.js status|advance|snapshot|rollback`
 (the runtime is installed locally in this project by `npx github:SaadBenhmid/helm init`).
 The user never types commands.
 
@@ -45,7 +45,7 @@ Helm manages context by **phase**, not by session. This applies from Validate on
    `state.json` + `DECISIONS.md`. Those files ARE the memory that survives a `/clear`.
 3. **Stay under budget.** Keep working context **≤ 40% (hard cap 50%)**. When approaching:
    write `.helm/handoff.md`, then `/compact` or `/clear`, then re-invoke `helm-bootstrap`.
-4. **Reset between phases.** After `node bin/helm.js advance`, write `handoff.md`, then
+4. **Reset between phases.** After `node .helm/runtime/bin/helm.js advance`, write `handoff.md`, then
    `/clear`. The next phase starts fresh and rehydrates from `.helm/` — so a long Validate
    chat never stacks onto PRD, PRD never stacks onto Mockup, etc.
 5. **Offload bulk work.** Send heavy research / code reading to subagents that return a

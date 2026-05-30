@@ -11,7 +11,7 @@ Goal: configure the engine for *this* project so the build loop runs cleanly and
 1. **Recommend a framework, then let the user pick.** Helm is framework-agnostic at build time
    but advises here. Derive the project's signals from the PRD — **size** (small/medium/large),
    **rigor** (low/medium/high), **ui** weight (low/medium/high), **team** (solo/team) — and run
-   `node bin/helm.js frameworks --size <s> --rigor <r> --ui <u> --team <t>`. It ranks the
+   `node .helm/runtime/bin/helm.js frameworks --size <s> --rigor <r> --ui <u> --team <t>`. It ranks the
    registry (`.helm/frameworks.json`) with rationale. Present the top 2–3 with their pros/cons,
    **recommend one**, and let the user choose. Record the choice + why in `.helm/DECISIONS.md`.
    If `helm frameworks` warns the registry is stale, run the **helm-frameworks-refresh** skill
@@ -22,7 +22,7 @@ Goal: configure the engine for *this* project so the build loop runs cleanly and
 3. **Set the model role slots** in `.helm/helm.config.json`: `plan` / `build` / `review`
    (e.g. Opus plan, Kimi build, Opus review — or all-Claude). Confirm with the user, then
    configure the build model (see "Configure Kimi as the build model" below).
-4. Run `node bin/helm.js advance` to move to the Build loop.
+4. Run `node .helm/runtime/bin/helm.js advance` to move to the Build loop.
 
 ## Configure Kimi as the build model (inside Claude Code)
 
@@ -35,7 +35,7 @@ platform.moonshot.cn) and the current Kimi model id (e.g. `kimi-k2.6`).
 **Recommended — env-var swap, persisted once** (zero extra tools; Kimi has an Anthropic-compatible
 endpoint). Set it up so the user never re-enters the key:
 
-1. Run `node bin/helm.js models init` — this scaffolds `.env.helm.example`, two launcher scripts
+1. Run `node .helm/runtime/bin/helm.js models init` — this scaffolds `.env.helm.example`, two launcher scripts
    (`scripts/helm-kimi.ps1` / `.sh`), and adds **`.env.helm` to `.gitignore`**.
 2. Ask the user for their Moonshot key, then **write `.env.helm`** (copy `.env.helm.example` and
    fill `ANTHROPIC_AUTH_TOKEN`; confirm `ANTHROPIC_MODEL` is the current Kimi id). Never commit it.

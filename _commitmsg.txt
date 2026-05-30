@@ -1,0 +1,24 @@
+fix(P0): isolate Helm runtime under .helm/runtime so it can't pollute or wipe the host app
+
+External audit (ChatGPT) flagged the biggest product risk: `helm init` copied
+Helm's runtime into the project's top-level src/ and bin/, and CORE_PATHS
+(the snapshot/rollback target set) included "src"/"bin" — so installing Helm
+into an existing app polluted its source tree and a rollback could DELETE the
+user's own files under src/.
+
+Fix — runtime isolation:
+- init now installs the runtime (bin, src, package.json) under .helm/runtime/,
+  never the app root. Project-facing assets (skills, templates, CLAUDE.md) still
+  install at root where Claude Code/the user expect them (force:false, never
+  clobbers app files).
+- CORE_PATHS drops "src"/"bin" and targets .helm/runtime instead, so snapshot/
+  rollback only ever touch Helm-owned paths — never the host app's source.
+- hooks runner + all bundled guidance (CLAUDE.md, AGENTS.md, README, USAGE,
+  skills) now invoke `node .helm/runtime/bin/helm.js`.
+
+Tests: test/runtime-isolation.test.js proves CORE_PATHS excludes src/bin, init
+isolates the runtime, init never clobbers a pre-existing app src/ file, and a
+snapshot+rollback cycle restores the runtime while leaving app src/ untouched.
+256/256 passing.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

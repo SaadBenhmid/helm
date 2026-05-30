@@ -59,7 +59,7 @@ claude
 and run `claude` — that session uses your normal Claude/Opus.
 
 ### Persist it once (so the key isn't re-entered each session)
-Run `node bin/helm.js models init`. It scaffolds:
+Run `node .helm/runtime/bin/helm.js models init`. It scaffolds:
 - `.env.helm.example` → copy to **`.env.helm`** and fill in your Moonshot key (this file is
   automatically added to `.gitignore` — never commit it),
 - `scripts/helm-kimi.ps1` and `scripts/helm-kimi.sh` → launchers that load `.env.helm` and start

@@ -30,7 +30,7 @@ browse the web, so the *CLI* just reads/ranks/flags-staleness; the *refresh* is 
    ui: low|medium|high, team:{solo,team: best|ok|poor} }`, and `sources` (1–3 URLs). Keep the
    `guidance` array (4–6 rules of thumb) current. Always include the `raw-claude-code` baseline.
 4. **Bump `lastVerified`** to today's date (YYYY-MM-DD).
-5. **Validate**: run `node bin/helm.js frameworks` — it must load without error and list the new
+5. **Validate**: run `node .helm/runtime/bin/helm.js frameworks` — it must load without error and list the new
    set. Fix any schema issue it reports.
 6. **Summarise** for the user what changed (added / removed / re-rated), and record a one-line
    entry in `.helm/DECISIONS.md` (e.g. "Refreshed framework registry — added X, dropped Y").

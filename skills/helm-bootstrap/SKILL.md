@@ -11,17 +11,17 @@ out where the project is and what to do next — do not improvise.
 ## Steps
 
 1. Run the status command from the project root:
-   `node bin/helm.js status`  (or `helm status` if Helm is linked globally)
+   `node .helm/runtime/bin/helm.js status`  (or `helm status` if Helm is linked globally)
 2. Read the output. It tells you the **current phase**, **status**, and the
    **next action**.
 3. If the output says Helm is not initialized, **ask the user one question first**:
    *"Is this a brand-new project, or an existing codebase you're adding to?"*
-   - New → `node bin/helm.js init`
-   - Existing → `node bin/helm.js init --existing` (starts at the **Adopt** phase so we
+   - New → `node .helm/runtime/bin/helm.js init`
+   - Existing → `node .helm/runtime/bin/helm.js init --existing` (starts at the **Adopt** phase so we
      understand the code before changing it).
    `init` automatically installs the memory hooks (SessionStart injects state; SessionEnd/PreCompact
    write a handoff) so context survives auto-compaction with no user action. If `.claude/settings.json`
-   somehow lacks them, run `node bin/helm.js hooks install`. Then re-run status.
+   somehow lacks them, run `node .helm/runtime/bin/helm.js hooks install`. Then re-run status.
 4. **Rehydrate cheaply.** Load only the small `.helm/` files you need for this phase:
    `state.json`, the current phase's artifact (e.g. `VALIDATION.md`, `PRD.md`), and
    `handoff.md` if it exists. Do **not** re-read earlier phases' conversations — their
@@ -29,7 +29,7 @@ out where the project is and what to do next — do not improvise.
 5. Announce to the user in plain language: *"You're on phase X. Next: Y."*
 6. If the next action names a phase skill (e.g. the Validate phase), invoke that
    skill to carry it out.
-7. **Between phases:** after a phase finishes and you run `node bin/helm.js advance`,
+7. **Between phases:** after a phase finishes and you run `node .helm/runtime/bin/helm.js advance`,
    write `.helm/handoff.md`, then `/clear` and re-invoke this skill — the next phase
    starts with a fresh context and rehydrates from `.helm/`.
 8. Before ending a session or clearing context, always write `.helm/handoff.md` from the
@@ -40,4 +40,4 @@ out where the project is and what to do next — do not improvise.
 - Communicate in the style set in `.helm/helm.config.json` (`comms`).
 - Never silently change Helm's own files. Self-improvements must be shown to the
   user as *"Lesson / Proposed update / Confirm?"* before applying.
-- Before any change to Helm core, run `node bin/helm.js snapshot` first.
+- Before any change to Helm core, run `node .helm/runtime/bin/helm.js snapshot` first.

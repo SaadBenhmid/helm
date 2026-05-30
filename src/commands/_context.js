@@ -28,7 +28,14 @@ export const VERIFY_PATH = join(HELM_DIR, "verify.json");
 export const PRD_PATH = join(HELM_DIR, "PRD.md");
 export const RUNLOG_PATH = join(HELM_DIR, "run-log.jsonl");
 export const SETTINGS_PATH = join(".claude", "settings.json");
-export const CORE_PATHS = ["src", "bin", "skills", "templates", "CLAUDE.md", CONFIG_PATH];
+// Where Helm's runtime is installed inside a host project: ISOLATED under .helm/
+// so it can never collide with — or, on rollback, wipe — the app's own src/ or bin/.
+export const RUNTIME_DIR = join(HELM_DIR, "runtime");
+// Snapshot/rollback target set ("Helm's core"). It must contain ONLY Helm-owned
+// paths: the isolated runtime, the bundled skills/templates/CLAUDE.md it installs,
+// and config. It MUST NOT contain the host app's top-level src/ or bin/, or a
+// rollback would delete the user's source. (External audit P0.)
+export const CORE_PATHS = [RUNTIME_DIR, "skills", "templates", "CLAUDE.md", CONFIG_PATH];
 
 export function ensureInit() {
   if (!existsSync(STATE_PATH)) {

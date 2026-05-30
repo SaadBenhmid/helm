@@ -3,7 +3,9 @@
 //   SessionStart -> inject Helm state into the new session
 //   SessionEnd / PreCompact -> capture a handoff before context is lost
 
-const DEFAULT_RUNNER = "node bin/helm.js";
+// The runtime is installed isolated under .helm/runtime (see init), so hooks must
+// invoke it there — never a top-level bin/ that could collide with the host app.
+const DEFAULT_RUNNER = "node .helm/runtime/bin/helm.js";
 
 export function helmHooks(runner = DEFAULT_RUNNER) {
   return {
