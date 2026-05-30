@@ -259,7 +259,136 @@ function renderArtifacts(artifacts, state) {
   </section>`;
 }
 
-export function renderDashboard({ state = {}, score = {}, security = {}, artifacts = {}, projectName = "", generatedAt = "" } = {}) {
+// ---- Tokens & credits ----
+
+// Group thousands without a locale dependency (zero-dep, deterministic).
+function groupThousands(n) {
+  const neg = n < 0;
+  const s = Math.abs(Math.round(n)).toString();
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 === 0) out += ",";
+    out += s[i];
+  }
+  return (neg ? "-" : "") + out;
+}
+
+// Money like $0.0123 — 4 decimals so tiny model spends stay legible.
+function formatUsd(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "$0.0000";
+  const neg = v < 0;
+  return (neg ? "-$" : "$") + Math.abs(v).toFixed(4);
+}
+
+function renderTelemetry(telemetry) {
+  if (!telemetry) return "";
+  const tokensIn = Number(telemetry.tokensIn) || 0;
+  const tokensOut = Number(telemetry.tokensOut) || 0;
+  const total = tokensIn + tokensOut;
+  const usd = Number(telemetry.usd) || 0;
+  const count = Number(telemetry.count) || 0;
+
+  const byPhase = telemetry.byPhase && typeof telemetry.byPhase === "object" ? telemetry.byPhase : {};
+  const phaseEntries = Object.keys(byPhase).map((k) => [k, Number(byPhase[k]) || 0]);
+  const phaseMax = phaseEntries.reduce((m, [, v]) => Math.max(m, v), 0);
+  const phaseRows = phaseEntries
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, val]) => {
+      const ratio = phaseMax ? val / phaseMax : 0;
+      const label = (PHASE_META[name] || {}).label || name;
+      return `
+      <div class="usage-row">
+        <span class="usage-name">${escapeHtml(label)}</span>
+        <span class="usage-bar"><span class="usage-fill" style="width:${Math.round(ratio * 100)}%"></span></span>
+        <span class="usage-val mono">${groupThousands(val)}</span>
+      </div>`;
+    })
+    .join("");
+
+  const byModel = telemetry.byModel && typeof telemetry.byModel === "object" ? telemetry.byModel : {};
+  const modelRows = Object.keys(byModel)
+    .map((name) => `<li><span class="usage-name">${escapeHtml(name)}</span><span class="usage-val mono">${groupThousands(Number(byModel[name]) || 0)}</span></li>`)
+    .join("");
+
+  return `
+  <section class="panel tokens-panel">
+    <header class="panel-head"><h2>Tokens &amp; credits</h2><span class="muted">what this project has cost so far</span></header>
+    <div class="tokens-top">
+      <div class="tok-figure">
+        <div class="tok-big mono">${groupThousands(total)}</div>
+        <div class="tok-cap muted small">words processed (tokens)</div>
+      </div>
+      <div class="tok-figure">
+        <div class="tok-big tok-usd mono">${escapeHtml(formatUsd(usd))}</div>
+        <div class="tok-cap muted small">estimated spend</div>
+      </div>
+    </div>
+    <div class="tok-sub muted small">${groupThousands(tokensIn)} in · ${groupThousands(tokensOut)} out${count ? ` · across ${groupThousands(count)} run(s)` : ""}</div>
+    ${phaseRows ? `<div class="usage-block"><h3 class="usage-head">By phase</h3>${phaseRows}</div>` : ""}
+    ${modelRows ? `<div class="usage-block"><h3 class="usage-head">By model</h3><ul class="usage-list">${modelRows}</ul></div>` : ""}
+  </section>`;
+}
+
+// ---- Goals ----
+
+function renderGoals(goals) {
+  if (!goals) return "";
+  const items = Array.isArray(goals.items) ? goals.items : [];
+  const total = Number(goals.total) || items.length;
+  const done = Number.isFinite(Number(goals.done))
+    ? Number(goals.done)
+    : items.filter((it) => it && it.done).length;
+  const ratio = total ? Math.min(1, done / total) : 0;
+  const rows = items
+    .map((it) => {
+      const checked = it && it.done ? "checked" : "";
+      const cls = it && it.done ? "done" : "";
+      return `<li class="task ${cls}"><input type="checkbox" class="checkbox" disabled ${checked}><span>${escapeHtml((it && it.text) || "")}</span></li>`;
+    })
+    .join("");
+  return `
+  <section class="panel goals-panel">
+    <header class="panel-head"><h2>Goals</h2><span class="muted">${done}/${total} done</span></header>
+    <div class="bar goals-bar"><span class="fill ${barClass(ratio)}" style="width:${Math.round(ratio * 100)}%"></span></div>
+    <ul class="md-list goals-list">${rows || '<li class="muted">No goals set yet.</li>'}</ul>
+  </section>`;
+}
+
+// ---- Verify ----
+
+function renderVerify(verify) {
+  if (!verify) {
+    return `
+  <section class="panel verify-panel">
+    <header class="panel-head"><h2>Verify</h2></header>
+    <p class="muted small">Not run yet — run <code>helm verify</code>.</p>
+  </section>`;
+  }
+  const passed = !!verify.passed;
+  const checks = Array.isArray(verify.checks) ? verify.checks : [];
+  const rows = checks
+    .map((c) => {
+      const ok = !!(c && c.ok);
+      return `
+      <li class="verify-row">
+        <span class="verify-mark ${ok ? "good" : "bad"}" aria-hidden="true">${ok ? "✓" : "✕"}</span>
+        <span class="verify-name">${escapeHtml((c && c.name) || "")}</span>
+        <span class="verify-detail muted">${escapeHtml((c && c.detail) || "")}</span>
+      </li>`;
+    })
+    .join("");
+  return `
+  <section class="panel verify-panel ${passed ? "good" : "bad"}">
+    <header class="panel-head"><h2>Verify</h2>${typeof verify.ranAt === "string" && verify.ranAt ? `<span class="muted small">ran ${escapeHtml(verify.ranAt)}</span>` : ""}</header>
+    <div class="verify-status">
+      <span class="verify-chip ${passed ? "good" : "bad"}">${passed ? "✓ passed" : "✕ failed"}</span>
+    </div>
+    <ul class="verify-list">${rows || '<li class="muted small">No checks recorded.</li>'}</ul>
+  </section>`;
+}
+
+export function renderDashboard({ state = {}, score = {}, security = {}, artifacts = {}, projectName = "", generatedAt = "", telemetry = null, goals = null, verify = null, live = false } = {}) {
   const order = orderFor(state);
   const phases = state.phases || {};
   const done = order.filter((p) => phases[p] === "complete").length;
@@ -272,6 +401,7 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${live ? '<meta http-equiv="refresh" content="5">' : ""}
 <title>Helm · ${escapeHtml(name)}</title>
 <style>
   :root{
@@ -326,8 +456,9 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
   .stop-note{display:block;font-family:'IBM Plex Mono',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-top:2px}
 
   /* Panels grid */
-  .grid{display:grid;grid-template-columns:1.35fr .9fr;gap:20px;margin-top:26px}
+  .grid{display:grid;grid-template-columns:1.35fr .9fr;gap:20px;margin-top:26px;align-items:start}
   @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .grid .col{display:flex;flex-direction:column;gap:20px;min-width:0}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
   .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;
     border-bottom:1px solid var(--line);padding-bottom:10px}
@@ -385,6 +516,47 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
   .md .md-table thead th{background:var(--paper-2);font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:.74rem;letter-spacing:.04em;text-transform:uppercase}
   .md .checkbox{accent-color:var(--brass)}
 
+  /* Tokens & credits */
+  .tokens-top{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-bottom:6px}
+  .tok-figure{display:flex;flex-direction:column;gap:2px}
+  .tok-big{font-size:2.1rem;font-weight:900;line-height:1;color:var(--ink)}
+  .tok-usd{color:var(--brass)}
+  .tok-cap{text-transform:uppercase;letter-spacing:.08em}
+  .tok-sub{margin:4px 0 2px}
+  .usage-block{margin-top:14px}
+  .usage-head{margin:0 0 8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-family:'IBM Plex Mono',monospace;font-weight:600}
+  .usage-row{display:grid;grid-template-columns:7.5em 1fr auto;gap:10px;align-items:center;font-size:.84rem;margin:5px 0}
+  .usage-name{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .usage-bar{height:7px;border-radius:6px;background:var(--paper-2);overflow:hidden;border:1px solid var(--line)}
+  .usage-fill{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--brass),var(--brass-2))}
+  .usage-val{color:var(--ink-2);font-size:.82rem}
+  .usage-list{list-style:none;margin:0;padding:0}
+  .usage-list li{display:flex;justify-content:space-between;gap:10px;font-size:.84rem;margin:4px 0}
+
+  /* Goals */
+  .goals-bar{margin:2px 0 14px}
+  .goals-list{margin:0;padding-left:0}
+  .goals-list li.task{list-style:none;display:flex;gap:8px;align-items:baseline;margin:5px 0}
+  .goals-list li.task.done span{color:var(--muted);text-decoration:line-through}
+  .goals-list .checkbox{accent-color:var(--brass)}
+
+  /* Verify */
+  .verify-status{margin-bottom:10px}
+  .verify-chip{font-family:'IBM Plex Mono',monospace;font-size:.82rem;font-weight:500;padding:6px 12px;border-radius:999px;border:1px solid}
+  .verify-chip.good{color:var(--good);border-color:var(--good);background:rgba(47,125,91,.08)}
+  .verify-chip.bad{color:var(--bad);border-color:var(--bad);background:rgba(178,58,58,.08)}
+  .verify-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .verify-row{display:grid;grid-template-columns:auto auto 1fr;gap:9px;align-items:baseline;font-size:.86rem}
+  .verify-mark{font-family:'IBM Plex Mono',monospace;font-weight:700}
+  .verify-mark.good{color:var(--good)} .verify-mark.bad{color:var(--bad)}
+  .verify-name{font-weight:600}
+  .verify-detail{font-size:.8rem}
+
+  /* Live indicator */
+  .live-dot{display:inline-flex;align-items:center;gap:7px;color:var(--good)}
+  .live-dot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 0 rgba(47,125,91,.5);animation:livePulse 2s infinite}
+  @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(47,125,91,.5)}70%{box-shadow:0 0 0 7px rgba(47,125,91,0)}100%{box-shadow:0 0 0 0 rgba(47,125,91,0)}}
+
   footer{margin-top:30px;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.1em}
 </style>
 </head>
@@ -404,6 +576,7 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
         <div><h1>Helm</h1><div class="tag">project console</div></div>
       </div>
       <div class="meta">
+        ${live ? '<span class="chip live-dot">live</span>' : ""}
         <span class="chip name">${escapeHtml(name)}</span>
         <span class="chip">${escapeHtml(type)}</span>
         <span class="chip">milestone ${escapeHtml(String(state.milestone || 1))}</span>
@@ -418,7 +591,12 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
 
     <div class="grid">
       <div class="col">${renderScore(score)}</div>
-      <div class="col">${renderSecurity(security)}</div>
+      <div class="col">
+        ${renderSecurity(security)}
+        ${renderVerify(verify)}
+        ${renderTelemetry(telemetry)}
+        ${renderGoals(goals)}
+      </div>
     </div>
 
     ${renderArtifacts(artifacts, state)}

@@ -1,5 +1,5 @@
 {
-  "helmVersion": "0.1.0",
+  "helmVersion": "1.6.0",
   "project": "untitled",
   "slots": {
     "framework": null,
