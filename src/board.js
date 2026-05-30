@@ -21,7 +21,7 @@ export function parseIssues(md) {
     }
     if (!section || !line.trim().startsWith("|")) continue;
     const cells = rowCells(line);
-    if (isSeparator(cells) || /^id$/i.test(cells[0] || "")) continue; // separator or header row
+    if (isSeparator(cells) || /^id\b/i.test(cells[0] || "")) continue; // separator or header row (e.g. "ID", "Issue ID")
     if (section === "open") {
       out.open.push({ id: cells[0] || "", title: cells[1] || "", type: cells[2] || "", notes: cells[3] || "" });
     } else {
@@ -36,13 +36,16 @@ export function buildBoard({ issues = { open: [], solved: [] }, goals = { items:
   const solved = (issues && issues.solved) || [];
   const items = (goals && goals.items) || [];
 
+  // Index goals over the FULL items array so a goal's id (G1, G2…) is stable and unique
+  // whether it lands in backlog or done — never colliding across columns.
+  const goalCards = items.map((g, idx) => ({ g, idx })).filter(({ g }) => g);
   const backlog = [
     ...open.map((i) => ({ kind: "issue", id: i.id, title: i.title, badge: i.type || "issue", note: i.notes || "" })),
-    ...items.filter((g) => g && !g.done).map((g, i) => ({ kind: "goal", id: `G${i + 1}`, title: g.text, badge: "goal", note: "" })),
+    ...goalCards.filter(({ g }) => !g.done).map(({ g, idx }) => ({ kind: "goal", id: `G${idx + 1}`, title: g.text, badge: "goal", note: "" })),
   ];
   const done = [
     ...solved.map((i) => ({ kind: "issue", id: i.id, title: i.title, badge: "solved", note: i.fix || "" })),
-    ...items.filter((g) => g && g.done).map((g, i) => ({ kind: "goal", id: `G${i + 1}`, title: g.text, badge: "done", note: "" })),
+    ...goalCards.filter(({ g }) => g.done).map(({ g, idx }) => ({ kind: "goal", id: `G${idx + 1}`, title: g.text, badge: "done", note: "" })),
   ];
   const cur = state && state.currentPhase;
   const inProgress = cur

@@ -171,7 +171,7 @@ function renderCourse(state) {
       const m = PHASE_META[p] || { label: p, glyph: "•", note: "" };
       return `
       <li class="stop ${status}">
-        <span class="stop-dot" aria-hidden="true">${m.glyph}</span>
+        <span class="stop-dot" aria-hidden="true">${escapeHtml(m.glyph)}</span>
         <span class="stop-label">${escapeHtml(m.label)}</span>
         <span class="stop-note">${status === "done" ? "charted" : status === "current" ? "on station" : escapeHtml(m.note)}</span>
       </li>`;
@@ -470,7 +470,7 @@ function renderMilestones(state) {
       const word = status === "done" ? "done" : status === "current" ? "in progress" : "to do";
       return `
       <div class="ms-row ${status}">
-        <span class="ms-glyph">${m.glyph}</span>
+        <span class="ms-glyph">${escapeHtml(m.glyph)}</span>
         <span class="ms-label">${escapeHtml(m.label)}</span>
         <span class="ms-status">${word}</span>
       </div>`;
@@ -771,7 +771,7 @@ ${live ? '<meta http-equiv="refresh" content="5">' : ""}
         <div><h1>Helm</h1><div class="tag">${live ? "live console" : "project console"}</div></div>
       </div>
       <nav class="nav">
-        ${NAV.map((n) => `<button class="${n.id === "overview" ? "active" : ""}" data-view="${n.id}"><span class="nav-glyph" aria-hidden="true">${n.glyph}</span>${escapeHtml(n.label)}${n.id === "issues" && openCount ? `<span class="nav-badge">${openCount}</span>` : ""}</button>`).join("")}
+        ${NAV.map((n) => `<button class="${n.id === "overview" ? "active" : ""}" data-view="${escapeHtml(n.id)}"><span class="nav-glyph" aria-hidden="true">${escapeHtml(n.glyph)}</span>${escapeHtml(n.label)}${n.id === "issues" && openCount ? `<span class="nav-badge">${openCount}</span>` : ""}</button>`).join("")}
       </nav>
       <div class="side-foot">
         ${live ? '<div class="live-dot">live · auto-refresh</div>' : ""}

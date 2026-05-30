@@ -50,6 +50,17 @@ test("buildBoard maps issues + goals + phase into columns", () => {
   assert.ok(board.backlog.some((c) => c.kind === "goal"));
 });
 
+test("buildBoard gives goals stable, unique ids across columns", () => {
+  const goals = { items: [{ text: "done one", done: true }, { text: "todo one", done: false }] };
+  const board = buildBoard({ goals });
+  const backlogGoal = board.backlog.find((c) => c.kind === "goal");
+  const doneGoal = board.done.find((c) => c.kind === "goal");
+  assert.ok(backlogGoal && doneGoal);
+  assert.notEqual(backlogGoal.id, doneGoal.id, "goal ids must not collide across columns");
+  assert.equal(doneGoal.id, "G1"); // first item in the list
+  assert.equal(backlogGoal.id, "G2");
+});
+
 test("buildBoard is safe with empty inputs", () => {
   const board = buildBoard({});
   assert.deepEqual(board.backlog, []);
