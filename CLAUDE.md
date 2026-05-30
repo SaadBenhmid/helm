@@ -20,7 +20,20 @@ The user never types commands.
   `/clear`, write handoffs, or manage tokens. You do it.
 - Run `helm status` at the start of every session yourself and tell the user where things stand.
 
-## Context & memory (always on — from the very first phase)
+## Context & memory (always on — AUTOPILOT)
+
+The user must never think about context, tokens, compaction, or commands. You manage all of it
+silently:
+
+- **Compaction is automatic.** Claude Code auto-compacts when the window fills; the `PreCompact`
+  and `SessionEnd` hooks capture `.helm/handoff.md` first, and the `SessionStart` hook re-injects
+  state after. So a single long session stays lossless — **never ask the user to `/compact` or
+  `/clear`**, and never tell them to run a command (you run every `helm` command yourself).
+- **Write memory continuously,** not just at phase end: append decisions to `DECISIONS.md`, issues
+  to `ISSUES.md`, lessons to `LEARNINGS.md` as they happen, so any compaction is lossless by
+  construction.
+- If you ever notice the window is heavy mid-phase, offload exploration to a subagent and keep a
+  fresh `.helm/handoff.md` — do it yourself, quietly.
 
 Helm manages context by **phase**, not by session. This applies from Validate onward.
 

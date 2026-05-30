@@ -4,7 +4,7 @@
 
 It is *not* a framework. It orchestrates the best framework + tools for your project and manages the whole journey around them: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, instantly knows where the project is, and tells you the next step — no memory loss, no re-explaining.
 
-> 📍 **status (v1.4):** Works on **new *and* existing projects**, with **hook-enforced memory**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves. Claude Code hooks auto-capture state/handoffs so nothing is lost when a session ends or the window compacts.
+> 📍 **status (v1.4):** Works on **new *and* existing projects**, with **hook-enforced memory**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves. **Autopilot:** `init` auto-installs memory hooks, so context survives auto-compaction with zero user action — stay in one session and Claude manages context/memory silently.
 
 ---
 
@@ -179,13 +179,14 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 **New project:** Validate → PRD → Mockup → Setup → Build → Ship.
 **Existing project:** Adopt → (PRD → Build → Ship) per milestone — run `helm milestone` to start the next one.
 
-### Automatic memory (hooks)
-Run `helm hooks install` once (Claude does this at setup). It wires Claude Code hooks:
-- **SessionStart** → `helm inject` prints current state into the new session.
+### Autopilot memory (hooks)
+**`helm init` installs these automatically** — you never run a command or manage context:
+- **SessionStart** → `helm inject` re-injects current state into the session.
 - **SessionEnd / PreCompact** → `helm capture` writes `.helm/handoff.md` before context is lost.
 
-This turns context/memory from "a rule the agent follows" into something the harness enforces.
-Run `helm lint` anytime to health-check memory.
+So you can stay in **one long session**: Claude Code auto-compacts when the window fills, the hooks
+make that lossless, and Helm rehydrates from `.helm/`. No `/compact`, no `/clear`, no re-explaining.
+(`helm hooks install` re-installs them if needed; `helm lint` health-checks memory.)
 
 ### Still ahead (future hardening)
 - Background decision/lesson extraction (Karpathy-style "compile") for very large projects.
