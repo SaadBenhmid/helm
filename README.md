@@ -76,8 +76,12 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `node bin/helm.js lint` | Health-check `.helm/` memory (missing logs, stale/out-of-order state). |
 | `node bin/helm.js security` | Scan for leaked secrets / insecure config; blocks `ship` until clean (override: `advance --force`). |
 | `node bin/helm.js score` | Print the project scorecard — process-health grade vs the promise (honest about what's unproven). |
-| `node bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard + artifacts. |
+| `node bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard, tokens, goals + artifacts. |
+| `node bin/helm.js dashboard --serve [port]` | Serve the dashboard live (default port `4317`), regenerated from `.helm` state on every request (auto-refreshes). |
+| `node bin/helm.js track --model M --in N --out N [--phase P] [--note ...]` | Record a token/credit usage event; prints running totals + USD cost. |
+| `node bin/helm.js verify` | Auto-detect the app's stack (node/static/python) and run install→build→test, recording pass/fail to `.helm/verify.json`. |
 | `node bin/helm.js frameworks [--size --rigor --ui --team]` | Recommend the best-fit AI-workflow framework from a refreshable registry (ranked, with rationale). |
+| `node bin/helm.js version` | Print the installed Helm version. |
 | `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
 > **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime

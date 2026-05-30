@@ -2,6 +2,8 @@
 import { join, dirname, resolve, relative, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, mkdirSync, copyFileSync, cpSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync, lstatSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { createServer } from "node:http";
 import { readState, writeState, defaultState, advanceState, startMilestone } from "../src/state.js";
 import { nextAction } from "../src/router.js";
 import { renderStateMd, renderHandoff } from "../src/render.js";
@@ -13,6 +15,10 @@ import { scoreProject } from "../src/score.js";
 import { renderDashboard } from "../src/dashboard.js";
 import { loadRegistry, scoreFrameworks, isStale } from "../src/frameworks.js";
 import { ensureGitignored, kimiEnvExample, KIMI_LAUNCHER_PS1, KIMI_LAUNCHER_SH } from "../src/models.js";
+import { emptyStore, loadTelemetry, addEvent, summarize, DEFAULT_RATES } from "../src/telemetry.js";
+import { parseGoals } from "../src/goals.js";
+import { detectStack, verifyPlan, interpretResult } from "../src/verify.js";
+import { VERSION } from "../src/version.js";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const HELM_DIR = ".helm";
@@ -20,6 +26,9 @@ const STATE_PATH = join(HELM_DIR, "state.json");
 const CONFIG_PATH = join(HELM_DIR, "helm.config.json");
 const SNAP_ROOT = join(HELM_DIR, "snapshots");
 const HANDOFF_PATH = join(HELM_DIR, "handoff.md");
+const TELEMETRY_PATH = join(HELM_DIR, "telemetry.json");
+const VERIFY_PATH = join(HELM_DIR, "verify.json");
+const PRD_PATH = join(HELM_DIR, "PRD.md");
 const SETTINGS_PATH = join(".claude", "settings.json");
 const CORE_PATHS = ["src", "bin", "skills", "templates", "CLAUDE.md", CONFIG_PATH];
 
@@ -96,11 +105,67 @@ function printFinding(f) {
 
 const ARTIFACT_FILES = ["VALIDATION.md", "PRD.md", "DESIGN.md", "SHIP.md", "CODEBASE.md", "DECISIONS.md", "ISSUES.md", "LEARNINGS.md", "handoff.md"];
 
+// Load the telemetry summary in the shape the dashboard wants: byPhase/byModel are
+// flat maps of key → total tokens (in + out). summarize() returns nested buckets,
+// so flatten them here. Returns null when there's no telemetry file / it's unreadable.
+function loadTelemetrySummary() {
+  if (!existsSync(TELEMETRY_PATH)) return null;
+  let sum;
+  try {
+    sum = summarize(loadTelemetry(readFileSync(TELEMETRY_PATH, "utf8")));
+  } catch {
+    return null;
+  }
+  const flatten = (buckets) => {
+    const out = {};
+    for (const [k, b] of Object.entries(buckets || {})) {
+      out[k] = (Number(b.tokensIn) || 0) + (Number(b.tokensOut) || 0);
+    }
+    return out;
+  };
+  return {
+    tokensIn: sum.tokensIn,
+    tokensOut: sum.tokensOut,
+    usd: sum.usd,
+    count: sum.count,
+    byPhase: flatten(sum.byPhase),
+    byModel: flatten(sum.byModel),
+  };
+}
+
+// Parse acceptance-criteria goals from the PRD (null when there's no PRD).
+function loadGoals() {
+  if (!existsSync(PRD_PATH)) return null;
+  try {
+    return parseGoals(readFileSync(PRD_PATH, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+// Load the last verify run (null when never run / unreadable).
+function loadVerify() {
+  if (!existsSync(VERIFY_PATH)) return null;
+  try {
+    return JSON.parse(readFileSync(VERIFY_PATH, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // Gather everything the scorecard + dashboard need from .helm/ and the repo (read-only).
 function gatherProject() {
   ensureInit();
   const state = readState(STATE_PATH);
-  const present = readdirSync(HELM_DIR).filter((f) => statSync(join(HELM_DIR, f)).isFile());
+  const present = readdirSync(HELM_DIR).filter((f) => {
+    // statSync can throw if an entry vanishes between readdir and stat (race on a
+    // busy machine/CI). Skip anything we can't stat rather than crashing.
+    try {
+      return statSync(join(HELM_DIR, f)).isFile();
+    } catch {
+      return false;
+    }
+  });
   const stateText = readFileSync(STATE_PATH, "utf8");
   const lint = lintMemory({ stateText, present });
   const { findings, suppressed } = runSecurity(".");
@@ -118,7 +183,10 @@ function gatherProject() {
     decisions: artifacts["DECISIONS.md"] || "",
     issues: artifacts["ISSUES.md"] || "",
   });
-  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")) };
+  const telemetry = loadTelemetrySummary();
+  const goals = loadGoals();
+  const verify = loadVerify();
+  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")), telemetry, goals, verify };
 }
 
 const cmd = process.argv[2];
@@ -143,6 +211,8 @@ if (cmd === "init") {
   if (!existsSync(fwSeed) && existsSync(join(PKG_ROOT, "templates", "frameworks.json"))) {
     copyFileSync(join(PKG_ROOT, "templates", "frameworks.json"), fwSeed);
   }
+  // Seed token/credit telemetry so `helm track` and the dashboard work immediately.
+  if (!existsSync(TELEMETRY_PATH)) writeFileSync(TELEMETRY_PATH, JSON.stringify(emptyStore(), null, 2) + "\n");
   // Seed the append-only memory logs so memory exists from the very first phase.
   for (const mem of ["DECISIONS.md", "ISSUES.md", "LEARNINGS.md"]) {
     const dst = join(HELM_DIR, mem);
@@ -226,20 +296,143 @@ if (cmd === "init") {
   for (const p of score.pending) console.log(`   ○ ${p.name} — ${p.why}`);
   console.log("");
 } else if (cmd === "dashboard") {
-  const g = gatherProject();
-  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
-  const html = renderDashboard({
-    state: g.state,
-    score: g.score,
-    security: g.security,
-    artifacts: g.artifacts,
-    projectName: g.projectName,
-    generatedAt: stamp,
-  });
-  const arg = process.argv[3];
-  const out = arg && !arg.startsWith("-") ? arg : "helm-dashboard.html";
-  writeFileSync(out, html);
-  console.log(`Dashboard written: ${out} — open it in a browser. (read-only snapshot)`);
+  // Build the dashboard HTML from current .helm state. `live` injects auto-refresh
+  // + a pulsing chip for the --serve mode.
+  const buildHtml = (live) => {
+    const g = gatherProject();
+    const stamp = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+    return renderDashboard({
+      state: g.state,
+      score: g.score,
+      security: g.security,
+      artifacts: g.artifacts,
+      projectName: g.projectName,
+      generatedAt: stamp,
+      telemetry: g.telemetry,
+      goals: g.goals,
+      verify: g.verify,
+      live,
+    });
+  };
+  if (process.argv.includes("--serve")) {
+    // Real-time mode: regenerate from live state on every request.
+    const si = process.argv.indexOf("--serve");
+    const portArg = process.argv[si + 1];
+    // Only accept a syntactically valid, in-range TCP port (1–65535); otherwise
+    // fall back to the default and warn rather than binding something nonsensical.
+    let port = 4317;
+    if (portArg && /^\d+$/.test(portArg)) {
+      const n = Number(portArg);
+      if (n > 0 && n < 65536) port = n;
+      else console.warn(`⚠ Ignoring out-of-range port "${portArg}" (must be 1–65535) — using ${port}.`);
+    }
+    const server = createServer((req, res) => {
+      try {
+        const html = buildHtml(true);
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(html);
+      } catch (e) {
+        res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(`Dashboard error: ${e.message}`);
+      }
+    });
+    // Without this, EADDRINUSE/EACCES throw an uncaught exception and dump a raw
+    // stack trace. Surface a clean message and exit non-zero instead.
+    server.on("error", (e) => {
+      if (e.code === "EADDRINUSE") console.error(`✕ Port ${port} is already in use — pick another with \`helm dashboard --serve <port>\`.`);
+      else if (e.code === "EACCES") console.error(`✕ Permission denied binding port ${port} — try a port ≥ 1024.`);
+      else console.error(`✕ Dashboard server error: ${e.message}`);
+      process.exit(1);
+    });
+    server.listen(port, () => {
+      console.log(`Helm dashboard live at http://localhost:${port}/ — auto-refreshes from .helm state. Ctrl+C to stop.`);
+    });
+  } else {
+    const arg = process.argv[3];
+    const out = arg && !arg.startsWith("-") ? arg : "helm-dashboard.html";
+    writeFileSync(out, buildHtml(false));
+    console.log(`Dashboard written: ${out} — open it in a browser. (read-only snapshot)`);
+  }
+} else if (cmd === "track") {
+  ensureInit();
+  // Parse --flag value pairs (and --note which captures the rest of the line).
+  const flag = (name) => {
+    const i = process.argv.indexOf(`--${name}`);
+    return i > -1 && process.argv[i + 1] !== undefined && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : null;
+  };
+  const noteIdx = process.argv.indexOf("--note");
+  const note = noteIdx > -1 ? process.argv.slice(noteIdx + 1).join(" ") || null : null;
+  const model = flag("model") || "default";
+  const tokensIn = Number(flag("in")) || 0;
+  const tokensOut = Number(flag("out")) || 0;
+  const phase = flag("phase");
+  // Load the store (seed a fresh one if the file is missing or unreadable).
+  let store;
+  try {
+    store = existsSync(TELEMETRY_PATH) ? loadTelemetry(readFileSync(TELEMETRY_PATH, "utf8")) : emptyStore();
+  } catch {
+    store = emptyStore();
+  }
+  const event = { model, tokensIn, tokensOut, ts: new Date().toISOString() };
+  if (phase != null) event.phase = phase;
+  if (note != null) event.note = note;
+  const updated = addEvent(store, event);
+  writeFileSync(TELEMETRY_PATH, JSON.stringify(updated, null, 2) + "\n");
+  const sum = summarize(updated);
+  console.log(
+    `Tracked: ${model} +${tokensIn} in / +${tokensOut} out${phase ? ` [${phase}]` : ""}. ` +
+      `Totals: ${sum.tokensIn + sum.tokensOut} tokens, $${sum.usd.toFixed(4)} across ${sum.count} event(s).`
+  );
+} else if (cmd === "verify") {
+  ensureInit();
+  // Allowlist of the exact command shapes detectStack/verifyPlan can emit.
+  // Anything else is refused before it reaches the shell (defense in depth).
+  const SAFE_CMD_RE = /^(npm (install|run build|test|start)|pip install (-r requirements\.txt|-e \.)|pytest)$/;
+  const { files, paths } = collectRepo(".");
+  const stack = detectStack({ files, paths });
+  const ranAt = new Date().toISOString();
+  if (stack.kind === "unknown") {
+    // No recognised stack — record a soft note and don't fail hard.
+    const checks = [{ name: "stack-detect", ok: true, detail: "no recognised stack" }];
+    writeFileSync(VERIFY_PATH, JSON.stringify({ passed: true, ranAt, checks }, null, 2) + "\n");
+    console.log("Verify: no recognised stack (node/static/python) — nothing to run. ✅");
+  } else {
+    const plan = verifyPlan(stack);
+    const checks = [];
+    for (const step of plan) {
+      if (!step.cmd) {
+        // Presence-only step (e.g. static-files): no command to run.
+        checks.push({ name: step.name, ok: true, detail: "present" });
+        console.log(`✓ ${step.name} — present`);
+        continue;
+      }
+      // Defense in depth: detectStack/verifyPlan only ever emit a fixed set of
+      // commands (npm/pip/pytest), never raw package.json script bodies. Refuse
+      // anything outside that allowlist so a future code change (or a tampered
+      // stack object) can't smuggle an arbitrary command into the shell.
+      if (!SAFE_CMD_RE.test(step.cmd)) {
+        checks.push({ name: step.name, ok: false, detail: "refused: command not allowlisted" });
+        console.log(`✕ ${step.name} — refused (not an allowlisted command): ${step.cmd}`);
+        continue;
+      }
+      const r = spawnSync(step.cmd, { shell: true, encoding: "utf8", timeout: 120000 });
+      // Timeout detection: spawnSync's timeout doesn't reliably surface
+      // error.code === "ETIMEDOUT" on every platform — when the child is killed
+      // for exceeding the limit, status is null and signal is set (e.g. SIGTERM).
+      // Treat either signal as the unambiguous timeout indicator.
+      const timedOut = (r.error && r.error.code === "ETIMEDOUT") || r.signal != null;
+      const exitCode = timedOut ? -1 : r.status == null ? -1 : r.status;
+      const res = interpretResult({ name: step.name, exitCode, stdout: r.stdout || "", stderr: r.stderr || "", timedOut });
+      checks.push(res);
+      console.log(`${res.ok ? "✓" : "✕"} ${res.name} — ${res.detail}  (${step.cmd})`);
+    }
+    const passed = checks.every((c) => c.ok);
+    writeFileSync(VERIFY_PATH, JSON.stringify({ passed, ranAt, checks }, null, 2) + "\n");
+    console.log(`\nVerify ${passed ? "passed ✅" : "FAILED ✕"} (${stack.kind}) — ${checks.filter((c) => c.ok).length}/${checks.length} check(s) ok.`);
+    if (!passed) process.exit(1);
+  }
+} else if (cmd === "version" || cmd === "--version" || cmd === "-v") {
+  console.log(VERSION);
 } else if (cmd === "frameworks") {
   ensureInit();
   const regPath = join(HELM_DIR, "frameworks.json");
@@ -354,7 +547,15 @@ if (cmd === "init") {
   }
 } else if (cmd === "lint") {
   ensureInit();
-  const present = readdirSync(HELM_DIR).filter((f) => statSync(join(HELM_DIR, f)).isFile());
+  const present = readdirSync(HELM_DIR).filter((f) => {
+    // statSync can throw if an entry vanishes between readdir and stat (race on a
+    // busy machine/CI). Skip anything we can't stat rather than crashing.
+    try {
+      return statSync(join(HELM_DIR, f)).isFile();
+    } catch {
+      return false;
+    }
+  });
   const stateText = existsSync(STATE_PATH) ? readFileSync(STATE_PATH, "utf8") : null;
   const findings = lintMemory({ stateText, present });
   if (findings.length === 0) {
@@ -372,5 +573,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init [--existing]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|dashboard [out.html]|frameworks [--size --rigor --ui --team]|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init [--existing]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|track --model M --in N --out N [--phase P] [--note ...]|verify|dashboard [out.html|--serve [port]]|frameworks [--size --rigor --ui --team]|version|snapshot [label]|rollback [id]>");
 }

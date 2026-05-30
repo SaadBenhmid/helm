@@ -1,6 +1,6 @@
 {
   "name": "helm",
-  "version": "1.2.0",
+  "version": "1.6.0",
   "description": "Auto-bootstrapping meta-orchestrator for building production SaaS with AI coding tools. Run `npx helm init` in your project.",
   "type": "module",
   "bin": { "helm": "bin/helm.js" },
