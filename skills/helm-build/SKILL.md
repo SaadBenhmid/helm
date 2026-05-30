@@ -15,6 +15,13 @@ Goal: ship the PRD slice by slice, keeping quality high and tokens low.
 5. Update memory: `.helm/STATE`, `DECISIONS.md`, `ISSUES.md`. Re-index the code map.
 6. Commit the slice atomically.
 
+## Brownfield (existing projects)
+- Read `.helm/CODEBASE.md` and **follow its existing patterns** — match the surrounding code,
+  don't impose a new style.
+- **Touch only what the milestone needs.** Never reformat, rename, or refactor unrelated code.
+- Before merging a slice, run the project's existing test/build commands as a **regression check**;
+  if there are no tests for the area you changed, add a focused one.
+
 ## Context cap
 - Keep working context **≤ 40% (hard cap 50%)**. When approaching: dispatch a subagent for
   exploration, `/compact`, or `/clear` after writing `.helm/handoff.md`.

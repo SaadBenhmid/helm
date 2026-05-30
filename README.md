@@ -4,7 +4,7 @@
 
 It is *not* a framework. It orchestrates the best framework + tools for your project and manages the whole journey around them: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, instantly knows where the project is, and tells you the next step — no memory loss, no re-explaining.
 
-> 📍 **status (v1.2):** Install with one command (`npx helm init`). All six journey phases are wired into the brain — Validate → PRD → Mockup → Setup → Build → Ship — Claude runs every command and you only confirm phase moves. A few runtime automations remain (see "Still ahead").
+> 📍 **status (v1.3):** Works on **new *and* existing projects**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** (understand the code) then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves.
 
 ---
 
@@ -69,6 +69,8 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `node bin/helm.js status` | Show current phase, status, and the next action. (alias: `next`) |
 | `node bin/helm.js advance` | Mark the current phase complete and move to the next one. |
 | `node bin/helm.js snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
+| `npx github:SaadBenhmid/helm init --existing` | One-time: adopt an **existing** codebase (starts at the Adopt phase). |
+| `node bin/helm.js milestone` | Start the next feature/fix milestone (loops back to a fresh PRD). |
 | `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
 > **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime
@@ -161,12 +163,16 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 
 | Phase | Skill | What it does |
 |-------|-------|--------------|
-| 💡 Validate | `helm-validate` | Market + cost check → go / pivot / kill (`VALIDATION.md`) |
-| 📋 PRD | `helm-prd` | Best-practice spec; tech/infra options ranked by #users + budget (`PRD.md`) |
-| 🎨 Mockup → Template | `helm-mockup` | Confirmed mockup → reusable component template → `DESIGN.md` identity |
-| 🧱 Setup | `helm-setup` | Pick framework + install Serena indexer + set model role slots |
-| 🔁 Build loop | `helm-build` | Slice-by-slice plan→build→review, context cap, CR protocol, self-evolve |
+| 🔎 Adopt *(existing only)* | `helm-adopt` | Map the codebase → `CODEBASE.md` + Serena index + seeded decisions (read-only) |
+| 💡 Validate *(new only)* | `helm-validate` | Market + cost check → go / pivot / kill (`VALIDATION.md`) |
+| 📋 PRD | `helm-prd` | Best-practice spec; tech/infra ranked by #users + budget; brownfield = per-milestone scope (`PRD.md`) |
+| 🎨 Mockup → Template *(new only)* | `helm-mockup` | Confirmed mockup → reusable component template → `DESIGN.md` identity |
+| 🧱 Setup *(new only)* | `helm-setup` | Pick framework + install Serena indexer + set model role slots |
+| 🔁 Build loop | `helm-build` | Slice-by-slice plan→build→review, context cap, CR protocol, self-evolve, brownfield guardrails |
 | 🚢 Ship | `helm-ship` | Production checklist + loud gates on secrets / data-loss / auth (`SHIP.md`) |
+
+**New project:** Validate → PRD → Mockup → Setup → Build → Ship.
+**Existing project:** Adopt → (PRD → Build → Ship) per milestone — run `helm milestone` to start the next one.
 
 ### Still ahead (future hardening)
 - Runtime context-meter + auto-compact automation (currently rule-guided).
@@ -180,4 +186,4 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 node --test
 ```
 
-v1.2 ships **49 tests** across state, advance, config, router, render, snapshot, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.
+v1.3 ships **63 tests** across state, advance, brownfield (project types + adopt + milestone), config, router, render, snapshot, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.

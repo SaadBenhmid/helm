@@ -14,8 +14,12 @@ out where the project is and what to do next — do not improvise.
    `node bin/helm.js status`  (or `helm status` if Helm is linked globally)
 2. Read the output. It tells you the **current phase**, **status**, and the
    **next action**.
-3. If the output says Helm is not initialized, run `node bin/helm.js init` first,
-   then re-run status.
+3. If the output says Helm is not initialized, **ask the user one question first**:
+   *"Is this a brand-new project, or an existing codebase you're adding to?"*
+   - New → `node bin/helm.js init`
+   - Existing → `node bin/helm.js init --existing` (starts at the **Adopt** phase so we
+     understand the code before changing it).
+   Then re-run status.
 4. **Rehydrate cheaply.** Load only the small `.helm/` files you need for this phase:
    `state.json`, the current phase's artifact (e.g. `VALIDATION.md`, `PRD.md`), and
    `handoff.md` if it exists. Do **not** re-read earlier phases' conversations — their

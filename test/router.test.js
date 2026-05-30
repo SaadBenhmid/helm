@@ -34,3 +34,15 @@ test("completing the final phase reports done", () => {
   assert.equal(a.phase, "done");
   assert.match(a.message, /complete/i);
 });
+
+test("existing project in adopt phase gets adopt guidance", () => {
+  const a = nextAction({ projectType: "existing", currentPhase: "adopt", phaseStatus: "in_progress" });
+  assert.equal(a.phase, "adopt");
+  assert.match(a.message, /codebase/i);
+});
+
+test("existing project routes adopt → prd (skips validate/mockup)", () => {
+  const a = nextAction({ projectType: "existing", currentPhase: "adopt", phaseStatus: "complete" });
+  assert.equal(a.phase, "prd");
+  assert.match(a.message, /PRD/);
+});

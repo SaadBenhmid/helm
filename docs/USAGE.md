@@ -9,6 +9,12 @@ The example user is a **non-coder**. The SaaS idea: **"InvoiceSnap" — dead-sim
 
 > **You only ever do two things:** (1) run the one setup command below, and (2) **confirm moving between phases.** Claude runs every other command and manages context + memory for you.
 
+> 🔁 **Already have a codebase?** Run `npx github:SaadBenhmid/helm init --existing` instead.
+> Claude starts with the **Adopt** phase — it maps your code into `.helm/CODEBASE.md` (read-only,
+> no changes) so it understands the project, then works in **milestones**: each feature/fix goes
+> PRD → Build → Ship, and `node bin/helm.js milestone` starts the next one. Brownfield guardrails
+> keep it from touching or reformatting unrelated code.
+
 ## 0. Set up a new project folder
 
 In your terminal (PowerShell on Windows):

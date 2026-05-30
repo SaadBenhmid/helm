@@ -2,7 +2,7 @@
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, mkdirSync, copyFileSync, cpSync } from "node:fs";
-import { readState, writeState, defaultState, advanceState } from "../src/state.js";
+import { readState, writeState, defaultState, advanceState, startMilestone } from "../src/state.js";
 import { nextAction } from "../src/router.js";
 import { renderStateMd } from "../src/render.js";
 import { snapshot, rollback } from "../src/snapshot.js";
@@ -34,9 +34,11 @@ if (cmd === "init") {
     }
   }
   mkdirSync(HELM_DIR, { recursive: true });
-  if (!existsSync(STATE_PATH)) writeState(STATE_PATH, defaultState());
+  // Project type: `--existing` (brownfield, starts at Adopt) or default `new` (greenfield).
+  const projectType = process.argv.includes("--existing") ? "existing" : "new";
+  if (!existsSync(STATE_PATH)) writeState(STATE_PATH, defaultState(projectType));
   if (!existsSync(CONFIG_PATH)) copyFileSync(join(PKG_ROOT, "templates", "helm.config.json"), CONFIG_PATH);
-  console.log("Helm initialized: .helm/ created, skills + CLAUDE.md installed in this project.");
+  console.log(`Helm initialized (${projectType} project): .helm/ created, skills + CLAUDE.md installed.`);
 } else if (cmd === "status" || cmd === "next") {
   ensureInit();
   const state = readState(STATE_PATH);
@@ -46,6 +48,17 @@ if (cmd === "init") {
   const updated = advanceState(readState(STATE_PATH));
   writeState(STATE_PATH, updated);
   console.log(renderStateMd(updated, nextAction(updated)));
+} else if (cmd === "milestone") {
+  ensureInit();
+  try {
+    const updated = startMilestone(readState(STATE_PATH));
+    writeState(STATE_PATH, updated);
+    console.log(`Starting milestone ${updated.milestone}.`);
+    console.log(renderStateMd(updated, nextAction(updated)));
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 } else if (cmd === "snapshot") {
   ensureInit();
   const id = snapshot(".", CORE_PATHS, SNAP_ROOT, process.argv[3] || "manual");
@@ -55,5 +68,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init|status|next|advance|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init [--existing]|status|next|advance|milestone|snapshot [label]|rollback [id]>");
 }

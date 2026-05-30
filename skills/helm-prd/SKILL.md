@@ -23,6 +23,13 @@ AI coding agent can execute it without guessing.
 - No vague criteria ("fast", "intuitive"). Quantify everything.
 - Spec is the source of truth: later code follows this PRD, never the reverse.
 
+## Brownfield (existing projects)
+- If `.helm/CODEBASE.md` exists, this PRD scopes only the **current milestone** (one feature/fix),
+  not the whole product. Read `CODEBASE.md` first.
+- Add explicit **"do NOT change"** guardrails for parts the milestone must not touch.
+- Reuse the existing stack and patterns from `CODEBASE.md` — don't introduce new frameworks
+  without flagging it as a critical decision for the user to confirm.
+
 ## Context & memory (always)
 - This phase's memory = `.helm/PRD.md` + `state.json` + `DECISIONS.md`. Keep them current — they survive a `/clear`.
 - Rehydrate from `.helm/VALIDATION.md` (the conclusions), not the validation chat.
