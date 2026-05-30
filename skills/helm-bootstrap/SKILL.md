@@ -19,7 +19,8 @@ out where the project is and what to do next — do not improvise.
    - New → `node bin/helm.js init`
    - Existing → `node bin/helm.js init --existing` (starts at the **Adopt** phase so we
      understand the code before changing it).
-   Then re-run status.
+   Then run `node bin/helm.js hooks install` so context/memory is captured automatically
+   (SessionStart injects state; SessionEnd/PreCompact write a handoff). Then re-run status.
 4. **Rehydrate cheaply.** Load only the small `.helm/` files you need for this phase:
    `state.json`, the current phase's artifact (e.g. `VALIDATION.md`, `PRD.md`), and
    `handoff.md` if it exists. Do **not** re-read earlier phases' conversations — their

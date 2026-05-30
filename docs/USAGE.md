@@ -34,6 +34,11 @@ and creates the `.helm/` memory folder. Now open this folder in **Claude Code** 
 agent of choice) — from here on, Claude runs the commands (locally via `node bin/helm.js …`);
 you just chat and confirm.
 
+> 🪝 On first run Claude also runs `node bin/helm.js hooks install`, which wires Claude Code
+> hooks so your **context + memory are captured automatically** — state is re-injected at the
+> start of every session, and a handoff is written when a session ends or the window compacts.
+> You never manage this; if anything ever looks off, Claude can run `node bin/helm.js lint`.
+
 ---
 
 ## 1. First message — Helm wakes up

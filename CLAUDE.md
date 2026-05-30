@@ -37,3 +37,6 @@ Helm manages context by **phase**, not by session. This applies from Validate on
    chat never stacks onto PRD, PRD never stacks onto Mockup, etc.
 5. **Offload bulk work.** Send heavy research / code reading to subagents that return a
    short summary, keeping the main window lean.
+6. **Hooks enforce it.** `helm hooks install` wires SessionStart (inject state), SessionEnd
+   and PreCompact (auto-write `.helm/handoff.md`) — so memory is captured even if a session
+   ends abruptly or the window auto-compacts. Run `helm lint` to health-check memory.

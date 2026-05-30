@@ -4,7 +4,7 @@
 
 It is *not* a framework. It orchestrates the best framework + tools for your project and manages the whole journey around them: idea → validation → PRD → mockup → build → ship. Any new AI session auto-reads Helm's state, instantly knows where the project is, and tells you the next step — no memory loss, no re-explaining.
 
-> 📍 **status (v1.3):** Works on **new *and* existing projects**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** (understand the code) then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves.
+> 📍 **status (v1.4):** Works on **new *and* existing projects**, with **hook-enforced memory**. Install with one command (`npx github:SaadBenhmid/helm init`). New projects walk Validate → PRD → Mockup → Setup → Build → Ship; existing projects start with **Adopt** then loop **PRD → Build → Ship** per milestone. Claude runs every command; you only confirm phase moves. Claude Code hooks auto-capture state/handoffs so nothing is lost when a session ends or the window compacts.
 
 ---
 
@@ -71,6 +71,8 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `node bin/helm.js snapshot [label]` | Snapshot Helm's core files (returns a snapshot id). |
 | `npx github:SaadBenhmid/helm init --existing` | One-time: adopt an **existing** codebase (starts at the Adopt phase). |
 | `node bin/helm.js milestone` | Start the next feature/fix milestone (loops back to a fresh PRD). |
+| `node bin/helm.js hooks install` | Wire Claude Code hooks so memory is captured automatically. |
+| `node bin/helm.js lint` | Health-check `.helm/` memory (missing logs, stale/out-of-order state). |
 | `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
 > **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime
@@ -99,8 +101,10 @@ src/
   state.js                  # read/write/validate .helm/state.json
   config.js                 # read/validate .helm/helm.config.json + defaults
   router.js                 # the brain: state -> next action
-  render.js                 # state -> human-readable status text
+  render.js                 # state -> status + handoff text
   snapshot.js               # snapshot + rollback safety
+  hooks.js                  # Claude Code hook wiring (SessionStart/End, PreCompact)
+  lint.js                   # memory-integrity checks
 skills/
   helm-bootstrap/SKILL.md   # auto-read entry skill (routes every session)
   helm-validate/SKILL.md    # P0 Validate phase guide
@@ -174,8 +178,16 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 **New project:** Validate → PRD → Mockup → Setup → Build → Ship.
 **Existing project:** Adopt → (PRD → Build → Ship) per milestone — run `helm milestone` to start the next one.
 
+### Automatic memory (hooks)
+Run `helm hooks install` once (Claude does this at setup). It wires Claude Code hooks:
+- **SessionStart** → `helm inject` prints current state into the new session.
+- **SessionEnd / PreCompact** → `helm capture` writes `.helm/handoff.md` before context is lost.
+
+This turns context/memory from "a rule the agent follows" into something the harness enforces.
+Run `helm lint` anytime to health-check memory.
+
 ### Still ahead (future hardening)
-- Runtime context-meter + auto-compact automation (currently rule-guided).
+- Background decision/lesson extraction (Karpathy-style "compile") for very large projects.
 - A global `helm` shortcut + framework-selection scoring + smoke-test-on-copy for self-evolve.
 
 ---
@@ -186,4 +198,4 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 node --test
 ```
 
-v1.3 ships **63 tests** across state, advance, brownfield (project types + adopt + milestone), config, router, render, snapshot, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.
+v1.4 ships **78 tests** across state, advance, brownfield (project types + adopt + milestone), config, router, render, snapshot, hooks, lint, CLI, init/asset-install, skills, phase skills, context discipline, and end-to-end routing.
