@@ -211,13 +211,14 @@ export function gatherProject() {
     }
   });
   const stateText = readFileSync(STATE_PATH, "utf8");
-  const lint = lintMemory({ stateText, present });
-  const { findings, suppressed } = runSecurity(".");
   const artifacts = {};
   for (const n of ARTIFACT_FILES) {
     const p = join(HELM_DIR, n);
     if (existsSync(p)) artifacts[n] = readFileSync(p, "utf8");
   }
+  // Pass artifacts so lint's phase-artifact gap check (P2) reaches score + dashboard.
+  const lint = lintMemory({ stateText, present, phaseArtifact: PHASE_ARTIFACT, artifacts });
+  const { findings, suppressed } = runSecurity(".");
   const score = scoreProject({
     state,
     present,
