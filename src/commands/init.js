@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, copyFileSync, cpSync, readFileSync, writeFileSyn
 import { writeState, defaultState } from "../state.js";
 import { mergeHooks } from "../hooks.js";
 import { emptyStore } from "../telemetry.js";
-import { PKG_ROOT, HELM_DIR, STATE_PATH, CONFIG_PATH, TELEMETRY_PATH, SETTINGS_PATH } from "./_context.js";
+import { PKG_ROOT, HELM_DIR, STATE_PATH, CONFIG_PATH, TELEMETRY_PATH, SETTINGS_PATH, logEvent } from "./_context.js";
 
 export function init(argv) {
   // --dry-run: print exactly what init would write/copy, then exit WITHOUT touching disk.
@@ -22,6 +22,7 @@ export function init(argv) {
       join(HELM_DIR, "LEARNINGS.md"),
       join(HELM_DIR, "frameworks.json"),
       TELEMETRY_PATH,
+      join(HELM_DIR, "run-log.jsonl (created on first event)"),
       SETTINGS_PATH,
     ];
     for (const p of plan) console.log(`  + ${p}`);
@@ -71,5 +72,6 @@ export function init(argv) {
     mkdirSync(".claude", { recursive: true });
     writeFileSync(SETTINGS_PATH, JSON.stringify(mergeHooks(settings), null, 2) + "\n");
   }
+  logEvent({ type: "init", projectType });
   console.log(`Helm initialized (${projectType} project): .helm/ + memory hooks installed, skills + CLAUDE.md ready.`);
 }
