@@ -8,9 +8,15 @@ description: Helm Phase 3 — pick the framework for this project, install the S
 Goal: configure the engine for *this* project so the build loop runs cleanly and cheaply.
 
 ## Steps
-1. **Pick the framework** best suited to this project (GSD / Superpowers / BMAD / etc.)
-   based on the PRD. Record the choice + why in `.helm/DECISIONS.md`. No lock-in: it can be
-   swapped later (a critical action — needs user confirmation).
+1. **Recommend a framework, then let the user pick.** Helm is framework-agnostic at build time
+   but advises here. Derive the project's signals from the PRD — **size** (small/medium/large),
+   **rigor** (low/medium/high), **ui** weight (low/medium/high), **team** (solo/team) — and run
+   `node bin/helm.js frameworks --size <s> --rigor <r> --ui <u> --team <t>`. It ranks the
+   registry (`.helm/frameworks.json`) with rationale. Present the top 2–3 with their pros/cons,
+   **recommend one**, and let the user choose. Record the choice + why in `.helm/DECISIONS.md`.
+   If `helm frameworks` warns the registry is stale, run the **helm-frameworks-refresh** skill
+   first so the advice reflects the current market. No lock-in: the choice can be swapped later
+   (a critical action — needs user confirmation).
 2. **Install the code indexer (Serena MCP)** so future sessions navigate by symbol instead of
    re-reading files (40–90% token savings). Add a re-index step to the workflow.
 3. **Set the model role slots** in `.helm/helm.config.json`: `plan` / `build` / `review`

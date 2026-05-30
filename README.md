@@ -77,6 +77,7 @@ Then let your AI agent invoke the **helm-validate** skill to walk you through Ph
 | `node bin/helm.js security` | Scan for leaked secrets / insecure config; blocks `ship` until clean (override: `advance --force`). |
 | `node bin/helm.js score` | Print the project scorecard — process-health grade vs the promise (honest about what's unproven). |
 | `node bin/helm.js dashboard [out.html]` | Generate a read-only, light-theme dashboard of progress, phases, scorecard + artifacts. |
+| `node bin/helm.js frameworks [--size --rigor --ui --team]` | Recommend the best-fit AI-workflow framework from a refreshable registry (ranked, with rationale). |
 | `node bin/helm.js rollback [id]` | Restore from a snapshot (latest if no id given). |
 
 > **You don't type these — Claude does.** After the one-time `npx github:…` install, the runtime
@@ -175,7 +176,7 @@ All six phases are now wired into the brain. `helm advance` moves you through th
 | 💡 Validate *(new only)* | `helm-validate` | Market + cost check → go / pivot / kill (`VALIDATION.md`) |
 | 📋 PRD | `helm-prd` | Best-practice spec; tech/infra ranked by #users + budget; brownfield = per-milestone scope (`PRD.md`) |
 | 🎨 Mockup → Template *(new only)* | `helm-mockup` | Confirmed mockup → reusable component template → `DESIGN.md` identity |
-| 🧱 Setup *(new only)* | `helm-setup` | Pick framework + install Serena indexer + set model role slots |
+| 🧱 Setup *(new only)* | `helm-setup` | **Recommends** a best-fit framework from a refreshable registry (`helm frameworks`) + installs Serena indexer + sets model role slots |
 | 🔁 Build loop | `helm-build` | Slice-by-slice plan→build→review, context cap, CR protocol, self-evolve, brownfield guardrails |
 | 🚢 Ship | `helm-ship` | Production checklist; **code-enforced** secret scan (`helm security`) blocks shipping, plus loud gates on data-loss / auth (`SHIP.md`) |
 

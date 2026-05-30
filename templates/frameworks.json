@@ -1,0 +1,213 @@
+{
+  "schema": 1,
+  "lastVerified": "2026-05-30",
+  "note": "AI coding WORKFLOW frameworks (how an agent builds software). Refresh with the helm-frameworks-refresh skill; the agent re-researches the market and rewrites this file + bumps lastVerified.",
+  "frameworks": [
+    {
+      "id": "raw-claude-code",
+      "name": "Raw Claude Code (no framework)",
+      "url": "https://docs.claude.com/en/docs/claude-code",
+      "bestFor": "Small, well-understood tasks and quick MVPs steered directly via plan mode and a tight CLAUDE.md.",
+      "pros": [
+        "Zero setup, no methodology overhead — start immediately.",
+        "Plan mode gives read-only analysis + persisted plans that survive restarts.",
+        "A good <200-line CLAUDE.md already injects context every session."
+      ],
+      "cons": [
+        "Unguided success rate is low; quality hinges on the operator's prompting.",
+        "Context rot is the main failure mode on long sessions with no phase boundaries.",
+        "No enforced spec/TDD/review discipline — rigor must be supplied manually."
+      ],
+      "fit": { "size": { "small": "best", "medium": "ok", "large": "poor" }, "rigor": "low", "ui": "medium", "team": { "solo": "best", "team": "poor" } },
+      "sources": ["https://www.datacamp.com/tutorial/claude-code-best-practices", "https://claudelog.com/mechanics/plan-mode/"]
+    },
+    {
+      "id": "bmad-method",
+      "name": "BMAD-METHOD",
+      "url": "https://github.com/bmad-code-org/BMAD-METHOD",
+      "bestFor": "Large, complex builds needing a full simulated agile team (PM, Architect, Dev, UX) and heavy upfront planning/architecture.",
+      "pros": [
+        "12+ role agents covering brainstorming → deployment, collaborating in one session.",
+        "Opinionated agile flow grounded in PRD + architecture artifacts before code.",
+        "Free/open source, multi-tool, with native Claude Code skills."
+      ],
+      "cons": [
+        "Heavyweight: multi-agent ceremony is overkill for small or solo work.",
+        "Steep learning curve for roles and document flow.",
+        "Rapidly evolving — churn between versions."
+      ],
+      "fit": { "size": { "small": "poor", "medium": "ok", "large": "best" }, "rigor": "high", "ui": "medium", "team": { "solo": "ok", "team": "best" } },
+      "sources": ["https://github.com/bmad-code-org/BMAD-METHOD", "https://docs.bmad-method.org/"]
+    },
+    {
+      "id": "spec-kit",
+      "name": "GitHub Spec Kit",
+      "url": "https://github.com/github/spec-kit",
+      "bestFor": "Greenfield features where an explicit, reviewable spec should drive a clean requirements → plan → tasks → implement pipeline.",
+      "pros": [
+        "Official GitHub toolkit with a clear staged workflow + slash commands.",
+        "Agent-agnostic: Claude Code, Copilot, Gemini CLI from the same specs.",
+        "Spec stays the source of truth and drives implementation."
+      ],
+      "cons": [
+        "Process discipline adds friction for trivial or exploratory work.",
+        "Greenfield-oriented; weaker brownfield delta tracking than OpenSpec.",
+        "Still requires good requirements thinking — structure isn't a substitute."
+      ],
+      "fit": { "size": { "small": "ok", "medium": "best", "large": "ok" }, "rigor": "high", "ui": "medium", "team": { "solo": "ok", "team": "best" } },
+      "sources": ["https://github.com/github/spec-kit", "https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/"]
+    },
+    {
+      "id": "openspec",
+      "name": "OpenSpec",
+      "url": "https://github.com/Fission-AI/OpenSpec",
+      "bestFor": "Brownfield iteration and regulated/audited work where every change is proposed, reviewed, and documented before code.",
+      "pros": [
+        "Strict proposal → apply → archive state machine makes changes predictable.",
+        "First-class brownfield deltas (ADDED/MODIFIED/REMOVED) against existing behaviour.",
+        "Strong change-accountability and documentation trail."
+      ],
+      "cons": [
+        "Proposal-first ceremony is heavy for quick changes.",
+        "Optimised for accountability over living-spec sync.",
+        "Smaller ecosystem than spec-kit or BMAD."
+      ],
+      "fit": { "size": { "small": "ok", "medium": "best", "large": "best" }, "rigor": "high", "ui": "low", "team": { "solo": "ok", "team": "best" } },
+      "sources": ["https://github.com/Fission-AI/OpenSpec", "https://intent-driven.dev/blog/2025/12/26/choosing-spec-driven-development-tool/"]
+    },
+    {
+      "id": "kiro",
+      "name": "Kiro (AWS agentic IDE)",
+      "url": "https://kiro.dev/docs/specs/",
+      "bestFor": "AWS-native teams wanting spec-driven development baked into a full IDE with EARS requirements and automated hooks.",
+      "pros": [
+        "Generates a three-document spec system (requirements/design/tasks) from a prompt.",
+        "Automated agent hooks and deep AWS integration.",
+        "Full IDE experience; structured requirements are first-class."
+      ],
+      "cons": [
+        "AWS-centric design brings vendor lock-in.",
+        "Separate IDE, not a drop-in for an existing Claude Code workflow.",
+        "Heavier than lightweight markdown-only frameworks."
+      ],
+      "fit": { "size": { "small": "poor", "medium": "ok", "large": "best" }, "rigor": "high", "ui": "medium", "team": { "solo": "ok", "team": "best" } },
+      "sources": ["https://kiro.dev/docs/specs/"]
+    },
+    {
+      "id": "superpowers",
+      "name": "Superpowers (obra / Anthropic marketplace)",
+      "url": "https://github.com/obra/superpowers",
+      "bestFor": "Enforced engineering discipline — red-green-refactor TDD, systematic debugging, and fresh-agent code review — on production code.",
+      "pros": [
+        "Skills enforce discipline: tests fail first, root-cause debugging, brainstorm before code.",
+        "Subagent flow: brainstorm → worktree → plan → TDD → fresh-agent review → finish.",
+        "In the official Anthropic plugin marketplace; runs across Claude Code, Cursor, Codex, Copilot."
+      ],
+      "cons": [
+        "TDD-first + review gates add overhead for throwaway prototypes.",
+        "Discipline-as-text still depends on the agent following the skills.",
+        "Per-task execution rigor more than high-level product/architecture specs."
+      ],
+      "fit": { "size": { "small": "ok", "medium": "best", "large": "best" }, "rigor": "high", "ui": "low", "team": { "solo": "best", "team": "best" } },
+      "sources": ["https://github.com/obra/superpowers", "https://blog.fsck.com/2025/10/09/superpowers/"]
+    },
+    {
+      "id": "gsd",
+      "name": "GSD (Get Shit Done) for Claude Code",
+      "url": "https://github.com/gsd-build/get-shit-done",
+      "bestFor": "Solo devs and small teams wanting lightweight phase discipline (discuss → plan → execute → verify) without BMAD ceremony.",
+      "pros": [
+        "Phase-based context engineering fights context rot, each phase in a focused context.",
+        "Built from standard Claude Code primitives (markdown skills, sub-agents, small CLI + hooks).",
+        "Spec-driven but lightweight; verifies small units in clean contexts."
+      ],
+      "cons": [
+        "Fragmented ecosystem with competing forks.",
+        "Less heavyweight role modelling than BMAD.",
+        "Markdown/CLI machinery still adds learning overhead vs raw plan mode."
+      ],
+      "fit": { "size": { "small": "best", "medium": "best", "large": "ok" }, "rigor": "medium", "ui": "medium", "team": { "solo": "best", "team": "ok" } },
+      "sources": ["https://github.com/gsd-build/get-shit-done", "https://dev.to/stevengonsalvez/gsd-zero-to-productive-in-claude-code-without-the-faff-1pm1"]
+    },
+    {
+      "id": "taskmaster",
+      "name": "Taskmaster (claude-task-master)",
+      "url": "https://github.com/eyaltoledano/claude-task-master",
+      "bestFor": "Turning a detailed PRD into a dependency-ordered task graph the agent works one bite-sized task at a time.",
+      "pros": [
+        "Parses a PRD into structured, dependency-aware tasks; answers 'what's next?'.",
+        "Editor-agnostic MCP server — drops into Cursor, Windsurf, Claude Code, others.",
+        "Selective tool loading to cap context cost; sequencing reduces agent errors."
+      ],
+      "cons": [
+        "Quality is bounded by PRD quality.",
+        "Default tool set is a notable context hit unless trimmed.",
+        "Task-management only; no TDD/review/architecture discipline of its own."
+      ],
+      "fit": { "size": { "small": "ok", "medium": "best", "large": "ok" }, "rigor": "medium", "ui": "low", "team": { "solo": "best", "team": "ok" } },
+      "sources": ["https://github.com/eyaltoledano/claude-task-master"]
+    },
+    {
+      "id": "agent-os",
+      "name": "Agent OS (Builder Methods)",
+      "url": "https://github.com/buildermethods/agent-os",
+      "bestFor": "Teams enforcing consistent codebase standards/conventions across many projects, injected into specs on demand.",
+      "pros": [
+        "Moves conventions out of ad-hoc prompts into reusable, indexed standards.",
+        "Can extract existing patterns from a codebase into documented standards.",
+        "Tool- and language-agnostic."
+      ],
+      "cons": [
+        "Standards + spec shaping, not full lifecycle orchestration or execution.",
+        "Value compounds across a team/many projects; little payoff for one throwaway repo.",
+        "Upfront investment to build the standards library."
+      ],
+      "fit": { "size": { "small": "poor", "medium": "best", "large": "best" }, "rigor": "high", "ui": "medium", "team": { "solo": "ok", "team": "best" } },
+      "sources": ["https://github.com/buildermethods/agent-os"]
+    },
+    {
+      "id": "claude-flow",
+      "name": "Claude Flow / Ruflo (multi-agent orchestration)",
+      "url": "https://github.com/ruvnet/ruflo",
+      "bestFor": "Large-scale parallel/autonomous workloads where swarms of agents with shared memory drain a backlog.",
+      "pros": [
+        "Widely adopted multi-agent platform; coordinates swarms with shared memory.",
+        "Heavy infra: vector memory, many MCP tools; reports strong SWE-bench + cost savings.",
+        "Enterprise-grade, aimed at autonomous parallel sprints."
+      ],
+      "cons": [
+        "Heavyweight and complex — overkill for small/solo projects.",
+        "Renamed (Claude Flow → Ruflo); CLI/npm names lag, causing confusion.",
+        "Orchestration-first, not a spec/PRD discipline layer; benchmarks self-reported."
+      ],
+      "fit": { "size": { "small": "poor", "medium": "ok", "large": "best" }, "rigor": "medium", "ui": "low", "team": { "solo": "poor", "team": "best" } },
+      "sources": ["https://github.com/ruvnet/ruflo"]
+    },
+    {
+      "id": "aider-conventions",
+      "name": "Aider Conventions (CONVENTIONS.md)",
+      "url": "https://aider.chat/docs/usage/conventions.html",
+      "bestFor": "Terminal-first pair programming where one CONVENTIONS.md enforces style across any LLM, with atomic git commits.",
+      "pros": [
+        "Dead-simple, model-agnostic: one markdown file forwarded to any LLM, cached for reuse.",
+        "Lives in Aider's terminal loop with automatic atomic git commits per edit.",
+        "Community conventions repo of ready-made files."
+      ],
+      "cons": [
+        "Conventions layer only — no phases, specs, task graph, TDD, or orchestration.",
+        "Tied to the Aider tool rather than Claude Code's skill/agent system.",
+        "Manual curation; effectiveness scales with how well you write conventions."
+      ],
+      "fit": { "size": { "small": "best", "medium": "ok", "large": "poor" }, "rigor": "low", "ui": "low", "team": { "solo": "best", "team": "ok" } },
+      "sources": ["https://aider.chat/docs/usage/conventions.html"]
+    }
+  ],
+  "guidance": [
+    "Large multi-service build with heavy upfront PRD + architecture and a simulated team → BMAD-METHOD (or Kiro if AWS-native).",
+    "Solo MVP / quick well-scoped task, steer directly and ship fast → raw Claude Code (plan mode + tight CLAUDE.md), or Aider conventions for terminal pairing.",
+    "Need enforced TDD + fresh-agent code review on production code → Superpowers.",
+    "Lightweight phase discipline (discuss/plan/execute/verify) to fight context rot without ceremony → GSD; pair with Taskmaster if you already have a detailed PRD to decompose.",
+    "Greenfield feature driven by an explicit reviewable spec → GitHub Spec Kit; brownfield/regulated change needing a proposal + audit trail → OpenSpec.",
+    "Many projects/a team needing consistent reusable standards → Agent OS; large autonomous parallel/backlog-draining swarms → Claude Flow/Ruflo."
+  ]
+}

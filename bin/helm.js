@@ -11,6 +11,7 @@ import { lintMemory } from "../src/lint.js";
 import { scanSecurity } from "../src/security.js";
 import { scoreProject } from "../src/score.js";
 import { renderDashboard } from "../src/dashboard.js";
+import { loadRegistry, scoreFrameworks, isStale } from "../src/frameworks.js";
 import { ensureGitignored, kimiEnvExample, KIMI_LAUNCHER_PS1, KIMI_LAUNCHER_SH } from "../src/models.js";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -137,6 +138,11 @@ if (cmd === "init") {
   const projectType = process.argv.includes("--existing") ? "existing" : "new";
   if (!existsSync(STATE_PATH)) writeState(STATE_PATH, defaultState(projectType));
   if (!existsSync(CONFIG_PATH)) copyFileSync(join(PKG_ROOT, "templates", "helm.config.json"), CONFIG_PATH);
+  // Seed the framework registry so `helm frameworks` works immediately (refreshable later).
+  const fwSeed = join(HELM_DIR, "frameworks.json");
+  if (!existsSync(fwSeed) && existsSync(join(PKG_ROOT, "templates", "frameworks.json"))) {
+    copyFileSync(join(PKG_ROOT, "templates", "frameworks.json"), fwSeed);
+  }
   // Seed the append-only memory logs so memory exists from the very first phase.
   for (const mem of ["DECISIONS.md", "ISSUES.md", "LEARNINGS.md"]) {
     const dst = join(HELM_DIR, mem);
@@ -234,6 +240,44 @@ if (cmd === "init") {
   const out = arg && !arg.startsWith("-") ? arg : "helm-dashboard.html";
   writeFileSync(out, html);
   console.log(`Dashboard written: ${out} — open it in a browser. (read-only snapshot)`);
+} else if (cmd === "frameworks") {
+  ensureInit();
+  const regPath = join(HELM_DIR, "frameworks.json");
+  const src = existsSync(regPath) ? regPath : join(PKG_ROOT, "templates", "frameworks.json");
+  let reg;
+  try {
+    reg = loadRegistry(readFileSync(src, "utf8"));
+  } catch (e) {
+    console.error(`Framework registry invalid (${src}): ${e.message}`);
+    process.exit(1);
+  }
+  const flag = (name) => {
+    const i = process.argv.indexOf(`--${name}`);
+    return i > -1 && process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : null;
+  };
+  const sig = {};
+  for (const k of ["size", "rigor", "ui", "team"]) {
+    const v = flag(k);
+    if (v) sig[k] = v;
+  }
+  const hasSignals = Object.keys(sig).length > 0;
+  const ranked = scoreFrameworks(reg, sig);
+  console.log(`\nAI-workflow frameworks${hasSignals ? " — ranked for " + Object.entries(sig).map(([k, v]) => `${k}=${v}`).join(", ") : ""}  (verified ${reg.lastVerified})`);
+  if (isStale(reg, new Date())) console.log("⚠ Registry may be stale — refresh it with the helm-frameworks-refresh skill.");
+  console.log("");
+  ranked.forEach((r, i) => {
+    const fw = reg.frameworks.find((f) => f.id === r.id);
+    const tag = hasSignals ? `  [${r.score >= 0 ? "+" : ""}${r.score}]` : "";
+    console.log(`${hasSignals ? `${i + 1}. ` : "• "}${fw.name}${tag}`);
+    console.log(`    ${fw.bestFor}`);
+    if (hasSignals && r.why.length) console.log(`    fit: ${r.why.join("; ")}`);
+  });
+  if (!hasSignals && Array.isArray(reg.guidance)) {
+    console.log("\nRules of thumb:");
+    for (const g of reg.guidance) console.log(`  – ${g}`);
+  }
+  console.log("\nTip: narrow it with flags, e.g. helm frameworks --size large --rigor high --team team");
+  console.log("");
 } else if (cmd === "milestone") {
   ensureInit();
   try {
@@ -320,5 +364,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init [--existing]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|dashboard [out.html]|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init [--existing]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|dashboard [out.html]|frameworks [--size --rigor --ui --team]|snapshot [label]|rollback [id]>");
 }
