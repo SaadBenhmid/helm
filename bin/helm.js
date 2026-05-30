@@ -8,6 +8,7 @@ import { renderStateMd, renderHandoff } from "../src/render.js";
 import { snapshot, rollback } from "../src/snapshot.js";
 import { mergeHooks } from "../src/hooks.js";
 import { lintMemory } from "../src/lint.js";
+import { ensureGitignored, kimiEnvExample, KIMI_LAUNCHER_PS1, KIMI_LAUNCHER_SH } from "../src/models.js";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const HELM_DIR = ".helm";
@@ -111,6 +112,19 @@ if (cmd === "init") {
   } catch {
     /* never block a session on a hook error */
   }
+} else if (cmd === "models") {
+  if (process.argv[3] === "init") {
+    const gi = existsSync(".gitignore") ? readFileSync(".gitignore", "utf8") : "";
+    writeFileSync(".gitignore", ensureGitignored(gi, ".env.helm"));
+    if (!existsSync(".env.helm.example")) writeFileSync(".env.helm.example", kimiEnvExample());
+    mkdirSync("scripts", { recursive: true });
+    if (!existsSync(join("scripts", "helm-kimi.ps1"))) writeFileSync(join("scripts", "helm-kimi.ps1"), KIMI_LAUNCHER_PS1);
+    if (!existsSync(join("scripts", "helm-kimi.sh"))) writeFileSync(join("scripts", "helm-kimi.sh"), KIMI_LAUNCHER_SH);
+    console.log("Model env scaffolding ready: .env.helm.example + scripts/helm-kimi.(ps1|sh). `.env.helm` is git-ignored.");
+    console.log("Next: copy .env.helm.example to .env.helm, add your Moonshot key, then launch builds with scripts/helm-kimi.ps1 (Windows) or scripts/helm-kimi.sh.");
+  } else {
+    console.log("Usage: helm models init");
+  }
 } else if (cmd === "lint") {
   ensureInit();
   const present = readdirSync(HELM_DIR).filter((f) => statSync(join(HELM_DIR, f)).isFile());
@@ -131,5 +145,5 @@ if (cmd === "init") {
   const id = rollback(".", SNAP_ROOT, process.argv[3]);
   console.log(`Rolled back to: ${id}`);
 } else {
-  console.log("Usage: helm <init [--existing]|status|next|advance|milestone|hooks install|inject|capture|lint|snapshot [label]|rollback [id]>");
+  console.log("Usage: helm <init [--existing]|status|next|advance|milestone|hooks install|models init|inject|capture|lint|snapshot [label]|rollback [id]>");
 }

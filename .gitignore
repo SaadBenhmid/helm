@@ -2,3 +2,4 @@ node_modules/
 .helm/
 .firecrawl/
 *.log
+.env.helm

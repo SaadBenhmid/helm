@@ -26,22 +26,17 @@ skills, hooks, and `.helm/` memory keep working. Full reference: `docs/MODELS.md
 Prereqs to ask the user for: a **Moonshot** API key (platform.moonshot.ai — global, or
 platform.moonshot.cn) and the current Kimi model id (e.g. `kimi-k2.6`).
 
-**Recommended — env-var swap** (zero extra tools; Kimi has an Anthropic-compatible endpoint):
-```powershell
-# PowerShell — run Claude Code in "Kimi mode" for the BUILD slot
-$env:ANTHROPIC_BASE_URL  = "https://api.moonshot.ai/anthropic"
-$env:ANTHROPIC_AUTH_TOKEN = "<moonshot-api-key>"
-$env:ANTHROPIC_MODEL      = "kimi-k2.6"
-claude
-```
-```bash
-# bash/zsh equivalent
-export ANTHROPIC_BASE_URL="https://api.moonshot.ai/anthropic"
-export ANTHROPIC_AUTH_TOKEN="<moonshot-api-key>"
-export ANTHROPIC_MODEL="kimi-k2.6"
-claude
-```
-- For **plan/review** (Opus), use a separate terminal **without** those vars and run `claude`.
+**Recommended — env-var swap, persisted once** (zero extra tools; Kimi has an Anthropic-compatible
+endpoint). Set it up so the user never re-enters the key:
+
+1. Run `node bin/helm.js models init` — this scaffolds `.env.helm.example`, two launcher scripts
+   (`scripts/helm-kimi.ps1` / `.sh`), and adds **`.env.helm` to `.gitignore`**.
+2. Ask the user for their Moonshot key, then **write `.env.helm`** (copy `.env.helm.example` and
+   fill `ANTHROPIC_AUTH_TOKEN`; confirm `ANTHROPIC_MODEL` is the current Kimi id). Never commit it.
+3. To **build with Kimi**, the user launches Claude Code via the launcher (it loads `.env.helm`):
+   - Windows: `pwsh scripts/helm-kimi.ps1`  ·  macOS/Linux: `bash scripts/helm-kimi.sh`
+4. For **plan/review** (Opus), just run `claude` in a normal terminal (no Kimi env).
+
 - The two sessions share the project folder + `.helm/` memory + plan files — that's the handoff.
 - The swap is global per session (can't mix Opus+Kimi in one window).
 
