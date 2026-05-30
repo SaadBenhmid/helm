@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emptyStore, loadTelemetry, addEvent, summarize } from "../telemetry.js";
-import { ensureInit, TELEMETRY_PATH } from "./_context.js";
+import { ensureInit, logEvent, TELEMETRY_PATH } from "./_context.js";
 
 export function track(argv) {
   ensureInit();
@@ -25,9 +25,12 @@ export function track(argv) {
   const event = { model, tokensIn, tokensOut, ts: new Date().toISOString() };
   if (phase != null) event.phase = phase;
   if (note != null) event.note = note;
+  const before = summarize(store).usd;
   const updated = addEvent(store, event);
   writeFileSync(TELEMETRY_PATH, JSON.stringify(updated, null, 2) + "\n");
   const sum = summarize(updated);
+  // Record the per-event spend delta in the run log so summarizeRun can total it.
+  logEvent({ type: "tokens", model, tokensIn, tokensOut, phase: phase || null, usd: Number((sum.usd - before).toFixed(6)) });
   console.log(
     `Tracked: ${model} +${tokensIn} in / +${tokensOut} out${phase ? ` [${phase}]` : ""}. ` +
       `Totals: ${sum.tokensIn + sum.tokensOut} tokens, $${sum.usd.toFixed(4)} across ${sum.count} event(s).`

@@ -15,6 +15,7 @@ import { scoreProject } from "../score.js";
 import { loadTelemetry, summarize } from "../telemetry.js";
 import { parseGoals } from "../goals.js";
 import { parseIssues } from "../board.js";
+import { appendEvent, parseRunLog, summarizeRun } from "../runlog.js";
 
 export const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const HELM_DIR = ".helm";
@@ -25,6 +26,7 @@ export const HANDOFF_PATH = join(HELM_DIR, "handoff.md");
 export const TELEMETRY_PATH = join(HELM_DIR, "telemetry.json");
 export const VERIFY_PATH = join(HELM_DIR, "verify.json");
 export const PRD_PATH = join(HELM_DIR, "PRD.md");
+export const RUNLOG_PATH = join(HELM_DIR, "run-log.jsonl");
 export const SETTINGS_PATH = join(".claude", "settings.json");
 export const CORE_PATHS = ["src", "bin", "skills", "templates", "CLAUDE.md", CONFIG_PATH];
 
@@ -116,6 +118,30 @@ export function auditDecision(decision, why, phase) {
   appendFileSync(decisions, `| ${date} | ${decision} | ${why} | ${phase} |\n`);
 }
 
+// Append one event to the append-only run log (.helm/run-log.jsonl). Best-effort:
+// the audit trail must never crash a command, so failures are swallowed. No-op if
+// .helm doesn't exist yet (nothing to log against).
+export function logEvent(event) {
+  try {
+    if (!existsSync(HELM_DIR)) return;
+    const prior = existsSync(RUNLOG_PATH) ? readFileSync(RUNLOG_PATH, "utf8") : "";
+    writeFileSync(RUNLOG_PATH, appendEvent(prior, event, new Date().toISOString()));
+  } catch {
+    /* never let logging break a command */
+  }
+}
+
+// Load + summarize the run log (null when there's none / unreadable).
+export function loadRunLog() {
+  if (!existsSync(RUNLOG_PATH)) return null;
+  try {
+    const events = parseRunLog(readFileSync(RUNLOG_PATH, "utf8"));
+    return { events, summary: summarizeRun(events) };
+  } catch {
+    return null;
+  }
+}
+
 // Load the telemetry summary in the shape the dashboard wants: byPhase/byModel are
 // flat maps of key → total tokens (in + out). summarize() returns nested buckets,
 // so flatten them here. Returns null when there's no telemetry file / it's unreadable.
@@ -200,5 +226,6 @@ export function gatherProject() {
   const issues = parseIssues(artifacts["ISSUES.md"] || "");
   const decisions = artifacts["DECISIONS.md"] || "";
   const learnings = artifacts["LEARNINGS.md"] || "";
-  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")), telemetry, goals, verify, issues, decisions, learnings };
+  const runlog = loadRunLog();
+  return { state, artifacts, score, security: { findings, suppressed }, projectName: basename(resolve(".")), telemetry, goals, verify, issues, decisions, learnings, runlog };
 }

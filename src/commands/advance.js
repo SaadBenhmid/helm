@@ -4,7 +4,7 @@ import { readState, writeState, advanceState } from "../state.js";
 import { nextAction } from "../router.js";
 import { renderStateMd } from "../render.js";
 import { isRealArtifact } from "../score.js";
-import { ensureInit, runSecurity, printFinding, auditDecision, loadVerify, HELM_DIR, STATE_PATH, PHASE_ARTIFACT } from "./_context.js";
+import { ensureInit, runSecurity, printFinding, auditDecision, loadVerify, logEvent, HELM_DIR, STATE_PATH, PHASE_ARTIFACT } from "./_context.js";
 
 export function advance(argv) {
   ensureInit();
@@ -30,12 +30,14 @@ export function advance(argv) {
     if (!isRealArtifact(text)) {
       if (!force) {
         const reason = text === null ? "is missing" : "is a stub/placeholder";
+        logEvent({ type: "gate_block", gate: "artifact", phase: leaving, artifact: required });
         console.error(`Cannot advance: required artifact .helm/${required} for phase "${leaving}" ${reason}.`);
         console.error(`Write a real ${required}, or override (your responsibility) with: helm advance --force`);
         process.exit(1);
       }
       // Audited override for ANY phase: forcing past a missing/stub artifact
       // (VALIDATION/PRD/DESIGN/CODEBASE/SHIP) always leaves a record in DECISIONS.md.
+      logEvent({ type: "gate_override", gate: "artifact", phase: leaving, artifact: required });
       auditDecision(`Artifact gate overridden (--force): advanced past phase "${leaving}" without a real ${required}`, "explicit user override", leaving);
       console.warn(`⚠ Overriding missing/stub ${required} via --force — logged to DECISIONS.md.`);
     }
@@ -46,10 +48,12 @@ export function advance(argv) {
     const verify = loadVerify();
     if (!verify || verify.passed !== true) {
       if (!force) {
+        logEvent({ type: "gate_block", gate: "verify", phase: "ship" });
         console.error("✕ Ship blocked — verification has not passed. Run `helm verify` first (needs .helm/verify.json with passed: true).");
         console.error("Override (your responsibility) with: helm advance --force");
         process.exit(1);
       }
+      logEvent({ type: "gate_override", gate: "verify", phase: "ship" });
       auditDecision("Verify gate overridden (--force): shipped without a passing helm verify run", "explicit user override", "ship");
       console.warn("⚠ Overriding the verify gate via --force — logged to DECISIONS.md.");
     }
@@ -62,6 +66,7 @@ export function advance(argv) {
     const blockers = findings.filter((f) => f.level === "block");
     if (blockers.length) {
       if (!force) {
+        logEvent({ type: "gate_block", gate: "security", phase: "ship", blockers: blockers.length });
         console.error("🔐 Ship blocked — security scan found secrets/insecure config:\n");
         for (const f of findings) printFinding(f);
         console.error(`\n${blockers.length} blocking finding(s). Fix them, or override (your responsibility) with: helm advance --force`);
@@ -69,11 +74,13 @@ export function advance(argv) {
       }
       // Audited override: record what was waved through, with fingerprints.
       const fps = blockers.map((f) => f.fingerprint).join(", ");
+      logEvent({ type: "gate_override", gate: "security", phase: "ship", blockers: blockers.length });
       auditDecision(`Security gate overridden (--force): shipped past ${blockers.length} blocker(s) [${fps}]`, "explicit user override", "ship");
       console.warn(`⚠ Overriding ${blockers.length} security blocker(s) via --force — logged to DECISIONS.md.`);
     }
   }
   const updated = advanceState(state);
   writeState(STATE_PATH, updated);
+  logEvent({ type: "phase_advance", from: leaving, to: updated.currentPhase, status: updated.phaseStatus, forced: force });
   console.log(renderStateMd(updated, nextAction(updated)));
 }

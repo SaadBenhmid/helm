@@ -77,6 +77,32 @@ test("malicious issue title is escaped in the board", () => {
   assert.match(html, /&lt;img/);
 });
 
+test("run-log timeline view renders events + summary stats, and escapes notes", () => {
+  const runlog = {
+    events: [
+      { type: "init", projectType: "new", ts: "2026-05-30T10:00:00Z" },
+      { type: "phase_advance", from: "validate", to: "prd", ts: "2026-05-30T10:01:00Z" },
+      { type: "gate_block", gate: "artifact", phase: "prd", ts: "2026-05-30T10:02:00Z" },
+      { type: "note", message: "<script>alert(1)</script>", ts: "2026-05-30T10:03:00Z" },
+    ],
+    summary: { total: 4, advances: 1, blocks: 1, overrides: 0, verifyRuns: 0, verifyPassed: 0, usd: 0, first: "a", last: "b" },
+  };
+  const html = render({ runlog });
+  assert.match(html, /data-view="timeline"/);
+  assert.match(html, /id="timeline"/);
+  assert.match(html, /Advanced validate/);
+  assert.match(html, /Blocked at artifact gate/);
+  assert.match(html, /rl-stats/); // summary stat blocks
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  assert.match(html, /&lt;script&gt;/);
+});
+
+test("timeline view degrades gracefully with no run log", () => {
+  const html = render({ runlog: null });
+  assert.match(html, /id="timeline"/);
+  assert.match(html, /No run-log events yet/);
+});
+
 test("stays a light theme (no dark background)", () => {
   const html = render().toLowerCase();
   assert.doesNotMatch(html, /background[^;]*:\s*(black|#000)\b/);

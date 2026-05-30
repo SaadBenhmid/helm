@@ -21,9 +21,10 @@ import { frameworks } from "../src/commands/frameworks.js";
 import { version } from "../src/commands/version.js";
 import { snapshot } from "../src/commands/snapshot.js";
 import { rollback } from "../src/commands/rollback.js";
+import { log } from "../src/commands/log.js";
 
 const USAGE =
-  "Usage: helm <init [--existing] [--dry-run]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|track --model M --in N --out N [--phase P] [--note ...]|verify|dashboard [out.html|--serve [port]]|frameworks [--size --rigor --ui --team]|version|snapshot [label]|rollback [id]>";
+  "Usage: helm <init [--existing] [--dry-run]|status|next|advance [--force]|milestone|hooks install|models init|inject|capture|lint|security|score|track --model M --in N --out N [--phase P] [--note ...]|verify|dashboard [out.html|--serve [port]]|frameworks [--size --rigor --ui --team]|log [message|--json]|version|snapshot [label]|rollback [id]>";
 
 const argv = process.argv;
 const cmd = argv[2];
@@ -44,6 +45,7 @@ const COMMANDS = {
   "--version": version,
   "-v": version,
   frameworks,
+  log,
   milestone,
   hooks,
   inject,

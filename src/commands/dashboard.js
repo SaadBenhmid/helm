@@ -22,6 +22,7 @@ export function dashboard(argv) {
       issues: g.issues,
       decisions: g.decisions,
       learnings: g.learnings,
+      runlog: g.runlog,
       live,
     });
   };

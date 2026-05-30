@@ -492,17 +492,62 @@ function renderActivity(decisions, learnings) {
   return `<div class="activity">${dec}${learn}</div>`;
 }
 
+const RUNLOG_META = {
+  init: { glyph: "⚑", cls: "ink", word: (e) => `Project initialized (${e.projectType || "?"})` },
+  phase_advance: { glyph: "→", cls: "good", word: (e) => `Advanced ${e.from} → ${e.to}${e.forced ? " (forced)" : ""}` },
+  gate_block: { glyph: "✕", cls: "bad", word: (e) => `Blocked at ${e.gate} gate (${e.phase})` },
+  gate_override: { glyph: "!", cls: "warn", word: (e) => `Overrode ${e.gate} gate (${e.phase})` },
+  verify: { glyph: "✓", cls: (e) => (e.passed ? "good" : "bad"), word: (e) => `Verify ${e.passed ? "passed" : "FAILED"} (${e.kind || "?"})` },
+  tokens: { glyph: "$", cls: "brass", word: (e) => `Tokens: ${e.model || "?"} +${(e.tokensIn || 0) + (e.tokensOut || 0)} ($${Number(e.usd || 0).toFixed(4)})` },
+  note: { glyph: "✎", cls: "ink", word: (e) => `Note: ${e.message || ""}` },
+};
+
+function renderTimeline(runlog) {
+  if (!runlog || !Array.isArray(runlog.events) || runlog.events.length === 0) {
+    return `<p class="muted">No run-log events yet — they're recorded as you init, advance, verify, track, and hit gates.</p>`;
+  }
+  const s = runlog.summary || {};
+  const stat = (n, label, cls) => `<div class="rl-stat ${cls || ""}"><b>${escapeHtml(String(n))}</b><span>${escapeHtml(label)}</span></div>`;
+  const stats = `
+    <div class="rl-stats">
+      ${stat(s.advances || 0, "advances")}
+      ${stat(s.blocks || 0, "gate blocks", (s.blocks ? "bad" : ""))}
+      ${stat(s.overrides || 0, "overrides", (s.overrides ? "warn" : ""))}
+      ${stat(`${s.verifyPassed || 0}/${s.verifyRuns || 0}`, "verify pass")}
+      ${stat("$" + Number(s.usd || 0).toFixed(2), "tracked spend", "brass")}
+    </div>`;
+  // Newest first, capped so the page stays light.
+  const rows = runlog.events
+    .slice()
+    .reverse()
+    .slice(0, 80)
+    .map((e) => {
+      const m = RUNLOG_META[e.type] || { glyph: "•", cls: "ink", word: () => e.type || "event" };
+      const cls = typeof m.cls === "function" ? m.cls(e) : m.cls;
+      const when = escapeHtml(String(e.ts || "").replace("T", " ").replace(/\..*$/, ""));
+      return `
+      <li class="rl-row">
+        <span class="rl-glyph ${escapeHtml(cls)}" aria-hidden="true">${escapeHtml(m.glyph)}</span>
+        <span class="rl-when mono">${when}</span>
+        <span class="rl-text">${escapeHtml(m.word(e))}</span>
+      </li>`;
+    })
+    .join("");
+  return `${stats}<ul class="rl-list">${rows}</ul>`;
+}
+
 const NAV = [
   { id: "overview", label: "Overview", glyph: "◷" },
   { id: "board", label: "Board", glyph: "▦" },
   { id: "backlog", label: "Backlog", glyph: "≣" },
   { id: "issues", label: "Issues", glyph: "◬" },
   { id: "milestones", label: "Milestones", glyph: "◉" },
+  { id: "timeline", label: "Run log", glyph: "⧗" },
   { id: "artifacts", label: "Artifacts", glyph: "❡" },
   { id: "activity", label: "Activity", glyph: "➜" },
 ];
 
-export function renderDashboard({ state = {}, score = {}, security = {}, artifacts = {}, projectName = "", generatedAt = "", telemetry = null, goals = null, verify = null, issues = { open: [], solved: [] }, decisions = "", learnings = "", live = false } = {}) {
+export function renderDashboard({ state = {}, score = {}, security = {}, artifacts = {}, projectName = "", generatedAt = "", telemetry = null, goals = null, verify = null, issues = { open: [], solved: [] }, decisions = "", learnings = "", runlog = null, live = false } = {}) {
   const order = orderFor(state);
   const phases = state.phases || {};
   const done = order.filter((p) => phases[p] === "complete").length;
@@ -752,6 +797,20 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
   .ms-status{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 
   .sub{font-weight:600}
+
+  /* Run log / timeline */
+  .rl-stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .rl-stat{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 16px;min-width:96px;display:flex;flex-direction:column;gap:2px}
+  .rl-stat b{font-size:1.5rem;font-weight:900;line-height:1}
+  .rl-stat span{font-family:'IBM Plex Mono',monospace;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .rl-stat.bad b{color:var(--bad)} .rl-stat.warn b{color:var(--warn)} .rl-stat.brass b{color:var(--brass)}
+  .rl-list{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);margin-left:8px}
+  .rl-row{display:flex;align-items:baseline;gap:12px;padding:7px 0 7px 18px;position:relative;font-size:.9rem}
+  .rl-glyph{position:absolute;left:-11px;top:8px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:.7rem;background:var(--card);border:1px solid var(--line);color:var(--muted)}
+  .rl-glyph.good{color:var(--good);border-color:var(--good)} .rl-glyph.bad{color:var(--bad);border-color:var(--bad)}
+  .rl-glyph.warn{color:var(--warn);border-color:var(--warn)} .rl-glyph.brass{color:var(--brass);border-color:var(--brass)} .rl-glyph.ink{color:var(--ink-2)}
+  .rl-when{color:var(--muted);font-size:.74rem;flex:0 0 auto;min-width:8.5em}
+  .rl-text{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -816,6 +875,11 @@ export function renderDashboard({ state = {}, score = {}, security = {}, artifac
       <section class="view" id="milestones">
         <div class="view-head"><h2>Milestones</h2><span class="crumb">the journey</span></div>
         ${renderMilestones(state)}
+      </section>
+
+      <section class="view" id="timeline">
+        <div class="view-head"><h2>Run log</h2><span class="crumb">what Helm actually did${runlog && runlog.summary ? ` · ${runlog.summary.total} event(s)` : ""}</span></div>
+        ${renderTimeline(runlog)}
       </section>
 
       <section class="view" id="artifacts">

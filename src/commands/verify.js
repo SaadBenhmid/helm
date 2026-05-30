@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { detectStack, verifyPlan, interpretResult } from "../verify.js";
-import { ensureInit, collectRepo, VERIFY_PATH } from "./_context.js";
+import { ensureInit, collectRepo, logEvent, VERIFY_PATH } from "./_context.js";
 
 export function verify() {
   ensureInit();
@@ -21,6 +21,7 @@ export function verify() {
     // No recognised stack — record a soft note and don't fail hard.
     const checks = [{ name: "stack-detect", ok: true, detail: "no recognised stack" }];
     writeFileSync(VERIFY_PATH, JSON.stringify({ passed: true, ranAt, checks }, null, 2) + "\n");
+    logEvent({ type: "verify", passed: true, kind: "unknown", checks: 1 });
     console.log("Verify: no recognised stack (node/static/python) — nothing to run. ✅");
   } else {
     const plan = verifyPlan(stack);
@@ -55,6 +56,7 @@ export function verify() {
     }
     const passed = checks.every((c) => c.ok);
     writeFileSync(VERIFY_PATH, JSON.stringify({ passed, ranAt, checks }, null, 2) + "\n");
+    logEvent({ type: "verify", passed, kind: stack.kind, checks: checks.length, okChecks: checks.filter((c) => c.ok).length });
     console.log(`\nVerify ${passed ? "passed ✅" : "FAILED ✕"} (${stack.kind}) — ${checks.filter((c) => c.ok).length}/${checks.length} check(s) ok.`);
     if (!passed) process.exit(1);
   }
