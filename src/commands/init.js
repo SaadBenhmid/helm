@@ -30,26 +30,29 @@ export function init(argv) {
     process.exit(0);
   }
   mkdirSync(HELM_DIR, { recursive: true });
+  // Install the RUNTIME ISOLATED under .helm/runtime so it can never collide with
+  // the host app's own src/ or bin/, and so rollback can't wipe the user's source
+  // (audit P0). It is a COMPLETE package mirror — bin, src, package.json AND the
+  // bundled skills/templates/CLAUDE.md — so a re-init invoked FROM the isolated
+  // runtime can repair missing root assets (follow-up audit P2a). force:true keeps
+  // the mirror current on every init.
+  const runtimeDir = join(HELM_DIR, "runtime");
+  for (const asset of ["bin", "src", "package.json", "CLAUDE.md", "skills", "templates"]) {
+    const src = join(PKG_ROOT, asset);
+    const dest = resolve(join(runtimeDir, asset));
+    if (existsSync(src) && resolve(src) !== dest) {
+      cpSync(src, dest, { recursive: true, force: true, errorOnExist: false });
+    }
+  }
   // Install project-facing assets (skills, templates, CLAUDE.md) at the root where
   // Claude Code and the user expect them. force:false never clobbers app files.
+  // Source is PKG_ROOT — which, when init runs from the isolated runtime, is the
+  // complete mirror above, so deleted root assets are restored from it.
   for (const asset of ["CLAUDE.md", "skills", "templates"]) {
     const src = join(PKG_ROOT, asset);
     const dest = resolve(asset);
     if (existsSync(src) && resolve(src) !== dest) {
       cpSync(src, dest, { recursive: true, force: false, errorOnExist: false });
-    }
-  }
-  // Install the RUNTIME (bin + src) ISOLATED under .helm/runtime so it can never
-  // collide with the host app's own src/ or bin/, and so rollback (which restores
-  // CORE_PATHS) can never wipe the user's source. (External audit P0.)
-  const runtimeDir = join(HELM_DIR, "runtime");
-  // package.json travels with the runtime so `helm version` (which reads it
-  // relative to the runtime) works from the isolated location.
-  for (const asset of ["bin", "src", "package.json"]) {
-    const src = join(PKG_ROOT, asset);
-    const dest = resolve(join(runtimeDir, asset));
-    if (existsSync(src) && resolve(src) !== dest) {
-      cpSync(src, dest, { recursive: true, force: true, errorOnExist: false });
     }
   }
   // Project type: `--existing` (brownfield, starts at Adopt) or default `new` (greenfield).

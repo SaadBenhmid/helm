@@ -30,6 +30,35 @@ test("mergeHooks is idempotent (no duplicate Helm entries)", () => {
   assert.equal(twice.hooks.SessionEnd.length, 1);
 });
 
+// Follow-up audit P2b: upgrading must REPLACE old Helm hooks, not append beside them,
+// or a project keeps double-running the old `node bin/helm.js ...` and new runner.
+test("mergeHooks replaces a stale pre-isolation Helm hook (no double-run)", () => {
+  const old = {
+    hooks: {
+      SessionStart: [{ hooks: [{ type: "command", command: "node bin/helm.js inject" }] }],
+      SessionEnd: [{ hooks: [{ type: "command", command: "node bin/helm.js capture --reason session-end" }] }],
+    },
+  };
+  const merged = mergeHooks(old); // default runner = .helm/runtime/bin/helm.js
+  // Exactly one SessionStart group, and it must be the NEW runtime path — old pruned.
+  assert.equal(merged.hooks.SessionStart.length, 1);
+  const cmd = merged.hooks.SessionStart[0].hooks[0].command;
+  assert.match(cmd, /\.helm[\\/]runtime[\\/]bin[\\/]helm\.js inject/);
+  // The stale root-runtime form (`node bin/helm.js ...`) must be gone, not kept alongside.
+  const allStart = merged.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command));
+  assert.ok(!allStart.some((c) => /node bin\/helm\.js/.test(c)), "old node bin/helm.js hook must be pruned");
+});
+
+test("mergeHooks still preserves a non-Helm hook on the same event", () => {
+  const settings = {
+    hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo custom" }] }] },
+  };
+  const merged = mergeHooks(settings);
+  const cmds = merged.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command));
+  assert.ok(cmds.includes("echo custom"), "non-Helm hook preserved");
+  assert.ok(cmds.some((c) => /\.helm[\\/]runtime[\\/]bin[\\/]helm\.js inject/.test(c)), "Helm hook added");
+});
+
 test("renderHandoff includes reason, phase, and next action", () => {
   const md = renderHandoff(
     { projectType: "existing", currentPhase: "build", phaseStatus: "in_progress", milestone: 2 },

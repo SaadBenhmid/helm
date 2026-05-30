@@ -15,19 +15,32 @@ export function helmHooks(runner = DEFAULT_RUNNER) {
   };
 }
 
+// Recognises ANY Helm-owned memory hook regardless of which runner installed it —
+// the old pre-isolation `node bin/helm.js inject` as well as the current
+// `node .helm/runtime/bin/helm.js capture`. Anchored to the known Helm runtime
+// paths so an unrelated user script (e.g. `node tools/my-helm.js capture`) is never
+// pruned. Used to remove stale copies on upgrade.
+const HELM_HOOK_RE = /(?:^|[\s"'`/\\])(?:\.helm[\\/]runtime[\\/])?bin[\\/]helm\.js\s+(?:inject|capture)\b/;
+const isHelmHookGroup = (g) =>
+  g && Array.isArray(g.hooks) && g.hooks.some((h) => HELM_HOOK_RE.test((h && h.command) || ""));
+
 // Merge Helm's hooks into an existing settings object without clobbering other
-// hooks or settings. Idempotent: running twice does not duplicate Helm entries.
-// Matches on the EXACT command string (not a substring) to avoid false positives.
+// hooks or settings. Idempotent AND upgrade-safe: any prior Helm inject/capture
+// hook (including an old pre-isolation runner) is REMOVED before the current ones
+// are added, so an upgraded project never double-runs old + new hooks (audit P2b).
+// Non-Helm hooks on the same event are preserved untouched.
 export function mergeHooks(settings = {}, runner = DEFAULT_RUNNER) {
   const out = { ...settings, hooks: { ...(settings.hooks || {}) } };
   const helm = helmHooks(runner);
+  // First prune stale Helm hooks from EVERY event — including events Helm no longer
+  // uses — so an old install that wired a different event can't leave a zombie hook.
+  for (const [event, existing] of Object.entries(out.hooks)) {
+    if (Array.isArray(existing)) out.hooks[event] = existing.filter((g) => !isHelmHookGroup(g));
+  }
+  // Then add the current runner's hooks for each event Helm uses.
   for (const [event, groups] of Object.entries(helm)) {
-    const ourCommands = groups.flatMap((g) => g.hooks.map((h) => h.command));
     const existing = Array.isArray(out.hooks[event]) ? [...out.hooks[event]] : [];
-    const alreadyPresent = existing.some(
-      (g) => Array.isArray(g.hooks) && g.hooks.some((h) => ourCommands.includes(h.command))
-    );
-    if (!alreadyPresent) existing.push(...groups);
+    existing.push(...groups);
     out.hooks[event] = existing;
   }
   return out;
