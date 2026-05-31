@@ -18,25 +18,37 @@ function sanitizeLabel(label) {
     .replace(/\.{2,}/g, "-") // kill ".." (and "...") before anything else
     .replace(/[^a-zA-Z0-9._-]/g, "-") // separators, spaces, etc. → dash
     .replace(/^-+|-+$/g, "");
-  return cleaned || "auto";
+  // A lone "." would survive the whitelist but yields a dot-only id segment, so
+  // fall back to the default rather than emit it.
+  return cleaned && cleaned !== "." ? cleaned : "auto";
 }
 
-// A real snapshot id is a single flat segment. Reject anything with a separator
-// or traversal before it is ever joined into a path.
+// A real snapshot id is a single flat segment. Reject anything with a separator,
+// traversal, NUL byte, or a "." that would resolve back to the snapshot root,
+// before the id is ever joined into a path.
 function assertSafeId(id) {
-  if (typeof id !== "string" || !id || id.includes("/") || id.includes("\\") || id.includes("..")) {
+  if (
+    typeof id !== "string" ||
+    !id ||
+    id === "." ||
+    id.includes("\x00") ||
+    id.includes("/") ||
+    id.includes("\\") ||
+    id.includes("..")
+  ) {
     throw new Error(`invalid snapshot id: ${id}`);
   }
 }
 
-// Resolve `child` under `rootDir` and confirm it did not escape. Returns the
-// absolute path when safe, or null when the entry would land outside rootDir
-// (e.g. a tampered manifest path of "../../etc"). Callers skip null entries so a
-// corrupt snapshot can never drive an out-of-tree rmSync/cpSync.
+// Resolve `child` under `rootDir` and confirm it stays strictly INSIDE it.
+// Returns the absolute path when safe, or null when the entry would land on the
+// root itself (e.g. a manifest path of ".") or escape it (e.g. "../../etc").
+// Callers skip null entries so a corrupt/tampered manifest can never drive an
+// out-of-tree — or whole-root — rmSync/cpSync.
 function safeJoin(rootDir, child) {
   const root = resolve(rootDir);
   const full = resolve(root, child);
-  if (full !== root && !full.startsWith(root + sep)) return null;
+  if (full === root || !full.startsWith(root + sep)) return null;
   return full;
 }
 

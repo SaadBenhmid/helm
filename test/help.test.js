@@ -39,3 +39,21 @@ test("helm -h and helm help both print usage", () => {
   assert.match(helm(dir, ["-h"]), /Usage: helm/);
   assert.match(helm(dir, ["help"]), /Usage: helm/);
 });
+
+// Review finding (HIGH): the help interceptor must NOT swallow legitimate
+// free-text argument values that merely look like a help token. Those values
+// live at argv[4]+ (after their --flag), so they must still reach the handler.
+test("a help-like value after a flag is not mistaken for help", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-help4-"));
+  helm(dir, ["init"]);
+  // --note value of "-h" must actually be tracked, not trigger usage.
+  const out = helm(dir, ["track", "--model", "claude", "--in", "10", "--out", "5", "--note", "-h"]);
+  assert.doesNotMatch(out, /Usage: helm/, "a --note value of -h must not print usage");
+});
+
+test("a bareword positional 'help' still reaches its command (helm log help)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "helm-help5-"));
+  helm(dir, ["init"]);
+  const out = helm(dir, ["log", "help"]);
+  assert.doesNotMatch(out, /Usage: helm/, "logging the word 'help' must not print usage");
+});

@@ -151,6 +151,29 @@ test("rollback rejects an id containing path traversal", () => {
   assert.throws(() => rollback(base, snapRoot, "../../evil"), /invalid snapshot id/i);
 });
 
+test("rollback ignores a manifest path of '.' (must not wipe the base dir)", () => {
+  // Review finding: "." neither escapes nor is a child — it resolves to baseDir
+  // itself, so an unguarded rmSync would delete the whole project root.
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "clean");
+  const mPath = join(snapRoot, id, "manifest.json");
+  const m = JSON.parse(readFileSync(mPath, "utf8"));
+  m.absent = ["."];
+  m.paths = ["."];
+  writeFileSync(mPath, JSON.stringify(m));
+  rollback(base, snapRoot, id);
+  assert.ok(existsSync(base), "rollback must not delete the base dir");
+  assert.ok(existsSync(join(base, "src", "core.js")), "and must leave its contents intact");
+});
+
+test("rollback rejects a single-dot id", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  snapshot(base, ["src"], snapRoot, "ok");
+  assert.throws(() => rollback(base, snapRoot, "."), /invalid snapshot id/i);
+});
+
 test("rollback ignores manifest paths that escape the base dir", () => {
   const base = setup();
   const snapRoot = join(base, "snapshots");
