@@ -56,9 +56,17 @@ const COMMANDS = {
   rollback,
 };
 
+// Central help handling, BEFORE dispatch (external audit P3). Otherwise a help
+// flag on a MUTATING command (e.g. `helm snapshot --help`) would reach the handler
+// and cause a side effect — creating a snapshot literally labelled "--help", or
+// making `helm rollback --help` fail as a lookup for a snapshot named "--help".
+// Treating help as a pre-dispatch concern keeps every command safe to introspect.
+const HELP_TOKENS = new Set(["help", "--help", "-h"]);
+const wantsHelp = !cmd || HELP_TOKENS.has(cmd) || argv.slice(3).some((a) => HELP_TOKENS.has(a));
+
 const handler = Object.prototype.hasOwnProperty.call(COMMANDS, cmd) ? COMMANDS[cmd] : null;
-if (handler) {
-  handler(argv);
-} else {
+if (wantsHelp || !handler) {
   console.log(USAGE);
+} else {
+  handler(argv);
 }

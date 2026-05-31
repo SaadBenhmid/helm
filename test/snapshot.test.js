@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { snapshot, listSnapshots, rollback } from "../src/snapshot.js";
 
 function setup() {
@@ -119,4 +119,50 @@ test("rollback prunes a tracked path that did not exist at snapshot time", () =>
   writeFileSync(join(base, "build", "out.js"), "artifact");
   rollback(base, snapRoot, id);
   assert.equal(existsSync(join(base, "build")), false);
+});
+
+// --- Path safety (external audit P1) ---------------------------------------
+// A user-supplied label flows into the snapshot id and then into the filesystem
+// path. It must be sanitized so it can neither escape snapshotRoot nor produce
+// an id with separators that listSnapshots() (a flat readdir) can't see.
+
+test("a label with path separators is sanitized into a flat, discoverable id", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "feature/foo");
+  assert.ok(!id.includes("/") && !id.includes("\\"), "id must not contain path separators");
+  assert.ok(listSnapshots(snapRoot).includes(id), "sanitized snapshot must be discoverable");
+});
+
+test("a label cannot escape the snapshot root via ..", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "../../../escaped");
+  assert.ok(!id.includes(".."), "id must not contain ..");
+  const dir = resolve(snapRoot, id);
+  assert.ok(dir.startsWith(resolve(snapRoot) + sep), "snapshot dir must stay under snapshotRoot");
+  assert.ok(listSnapshots(snapRoot).includes(id), "and it must be discoverable, not written outside");
+});
+
+test("rollback rejects an id containing path traversal", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  snapshot(base, ["src"], snapRoot, "ok"); // at least one snapshot exists
+  assert.throws(() => rollback(base, snapRoot, "../../evil"), /invalid snapshot id/i);
+});
+
+test("rollback ignores manifest paths that escape the base dir", () => {
+  const base = setup();
+  const snapRoot = join(base, "snapshots");
+  const id = snapshot(base, ["src"], snapRoot, "clean");
+  // Tamper the manifest so a malicious/corrupt snapshot points outside baseDir.
+  const mPath = join(snapRoot, id, "manifest.json");
+  const m = JSON.parse(readFileSync(mPath, "utf8"));
+  const outside = join(base, "..", "OUTSIDE.txt");
+  writeFileSync(outside, "do-not-touch");
+  m.absent = ["../OUTSIDE.txt"];
+  m.paths = ["../../etc-evil"];
+  writeFileSync(mPath, JSON.stringify(m));
+  rollback(base, snapRoot, id);
+  assert.ok(existsSync(outside), "rollback must not delete files outside baseDir");
 });
