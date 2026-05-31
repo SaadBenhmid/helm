@@ -56,9 +56,24 @@ const COMMANDS = {
   rollback,
 };
 
+// Central help handling, BEFORE dispatch (external audit P3). Otherwise a help
+// flag on a MUTATING command (e.g. `helm snapshot --help`) would reach the handler
+// and cause a side effect — creating a snapshot literally labelled "--help", or
+// making `helm rollback --help` fail as a lookup for a snapshot named "--help".
+//
+// Scope is deliberately narrow to avoid swallowing legitimate arguments: we treat
+// help as requested only when (a) the COMMAND slot itself is a help word, or
+// (b) the FLAG form `--help`/`-h` sits in the first-arg slot (argv[3]) — which is
+// where snapshot/rollback would otherwise consume it as a label/id. Every command
+// that takes free text puts that value AFTER a flag (`--note`, `--reason`, `--model`),
+// i.e. at argv[4]+, so e.g. `helm track --note -h` and `helm log help` still work.
+const HELP_WORDS = new Set(["help", "--help", "-h"]);
+const HELP_FLAGS = new Set(["--help", "-h"]);
+const wantsHelp = !cmd || HELP_WORDS.has(cmd) || HELP_FLAGS.has(argv[3]);
+
 const handler = Object.prototype.hasOwnProperty.call(COMMANDS, cmd) ? COMMANDS[cmd] : null;
-if (handler) {
-  handler(argv);
-} else {
+if (wantsHelp || !handler) {
   console.log(USAGE);
+} else {
+  handler(argv);
 }
